@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace N4pper
+namespace N4pper.Decorators
 {
     public class StatementRunnerDecorator : IStatementRunner
     {
-        protected IStatementRunner Runner { get; set; }
+        public IStatementRunner Runner { get; protected set; }
 
         public StatementRunnerDecorator(IStatementRunner runner)
         {

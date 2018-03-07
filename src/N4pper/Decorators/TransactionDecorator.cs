@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace N4pper
+namespace N4pper.Decorators
 {
     public class TransactionDecorator : StatementRunnerDecorator, ITransaction
     {
-        protected ITransaction Transaction { get; set; }
+        public ITransaction Transaction { get; protected set; }
 
         public TransactionDecorator(ITransaction transaction) : base(transaction)
         {

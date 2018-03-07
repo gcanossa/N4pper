@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace N4pper
+namespace N4pper.Decorators
 {
     public class SessionDecorator : StatementRunnerDecorator, ISession
     {
-        protected ISession Session { get; set; }
+        public ISession Session { get; protected set; }
         
         public SessionDecorator(ISession session) : base(session)
         {

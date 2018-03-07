@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Xunit;
 using AsIKnow.Graph;
+using N4pper.Diagnostic;
 
 namespace UnitTest
 {
@@ -35,6 +36,8 @@ namespace UnitTest
         public class Runner : Person, IPositionable
         {
             public int Position { get; set; }
+
+            public Person Friend { get; set; }
         }
 
         #endregion
@@ -58,19 +61,6 @@ namespace UnitTest
 
                 result = session.Run("MATCH (p:Runner) RETURN p");
                 records = result.AsEnumerable().ToList();
-            }
-        }
-
-
-        [Trait("Category",nameof(UnitTest1))]
-        [Fact(DisplayName = nameof(Test1))]
-        public void Test1()
-        {
-            (IDriver driver, GraphManager mgr) = SetUp();
-
-            using (ISession session = driver.Session().WithGraphManager(mgr))
-            {
-                IEnumerable<Runner> obj = session.Query<Runner>("MATCH (p:Runner) RETURN p");
             }
         }
     }
