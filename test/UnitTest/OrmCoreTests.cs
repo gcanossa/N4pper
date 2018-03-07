@@ -11,13 +11,23 @@ using N4pper.Diagnostic;
 namespace UnitTest
 {
     [TestCaseOrderer(Constants.PriorityOrdererTypeName, Constants.PriorityOrdererTypeAssemblyName)]
+    [Collection(nameof(Neo4jCollection))]
     public class OrmCoreTests
     {
-        public (IDriver, GraphManager) SetUp()
+        protected Neo4jFixture Fixture { get; set; }
+
+        public OrmCoreTests(Neo4jFixture fixture)
+        {
+            Fixture = fixture;
+        }
+
+        public (IDriver, GraphManager, N4pperOptions, IQueryTracer) SetUp()
         {
             return (
-                GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "test")),
-                new GraphManager(new ReflectionTypeManager(new TypeManagerOptions()))
+                Fixture.GetService<IDriver>(),
+                Fixture.GetService<GraphManager>(),
+                Fixture.GetService<N4pperOptions>(),
+                Fixture.GetService<IQueryTracer>()
                 );
         }
 
@@ -63,10 +73,9 @@ namespace UnitTest
         [Fact(DisplayName = nameof(NodeCreation))]
         public void NodeCreation()
         {
-            (IDriver driver, GraphManager mgr) = SetUp();
-
-            TestQueryTracer tracer = new TestQueryTracer();
-            using (ISession session = driver.Session().WithGraphManager(mgr, new N4pperOptions(), tracer))
+            (IDriver driver, GraphManager mgr, N4pperOptions options, IQueryTracer tracer) = SetUp();
+            
+            using (ISession session = driver.Session().WithGraphManager(mgr, options, tracer))
             {
                 int count = session.Run("MATCH (p:Person) RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
@@ -93,10 +102,9 @@ namespace UnitTest
         [Fact(DisplayName = nameof(RelCreation))]
         public void RelCreation()
         {
-            (IDriver driver, GraphManager mgr) = SetUp();
-
-            TestQueryTracer tracer = new TestQueryTracer();
-            using (ISession session = driver.Session().WithGraphManager(mgr, new N4pperOptions(), tracer))
+            (IDriver driver, GraphManager mgr, N4pperOptions options, IQueryTracer tracer) = SetUp();
+            
+            using (ISession session = driver.Session().WithGraphManager(mgr, options, tracer))
             {
                 Student s1 = session.NewNodeUnique<Student>(new Student() { Age = 17, Name = "luca" });
                 Student s2 = session.NewNodeUnique<Student>(new Student() { Age = 18, Name = "piero" });
