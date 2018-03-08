@@ -13,9 +13,12 @@ namespace N4pper
 {
     public static class StatementHelpers
     {
-        private static string ExpressionBody(Dictionary<string, object> value, Dictionary<string, object> replacements)
+        private static string ExpressionBody(Dictionary<string, object> value, Dictionary<string, object> symbolsOverride)
         {
-            replacements = replacements ?? new Dictionary<string, object>();
+            if (value.Count == 0)
+                return "";
+
+            symbolsOverride = symbolsOverride ?? new Dictionary<string, object>();
             StringBuilder sb = new StringBuilder();
 
             sb.Append("{");
@@ -23,7 +26,7 @@ namespace N4pper
             foreach (KeyValuePair<string, object> kv in value)
             {
                 sb.Append($"{kv.Key}:");
-                sb.Append(replacements.ContainsKey(kv.Key) ? replacements[kv.Key] : JsonConvert.SerializeObject(kv.Value));
+                sb.Append(symbolsOverride.ContainsKey(kv.Key) ? symbolsOverride[kv.Key] : JsonConvert.SerializeObject(kv.Value));
                 sb.Append(",");
             }
             sb.Remove(sb.Length - 1, 1);
@@ -33,20 +36,19 @@ namespace N4pper
             return sb.ToString();
         }
         
-        public static string NodeExpression(Node node, string name = null, Dictionary<string, object> replacements = null)
+        public static string NodeExpression(Node node, string name = null, Dictionary<string, object> symbolsOverride = null)
         {
             node = node ?? throw new ArgumentNullException(nameof(node));
                         
             name = name ?? "";
 
-            return NodeExpression(node.Labels, node.ToDictionary(p=>p.Key,p=>p.Value).SelectValueTypesProperties() , name, replacements);
+            return NodeExpression(node.Labels, node.ToDictionary(p=>p.Key,p=>p.Value).SelectPrimitiveTypesProperties() , name, symbolsOverride);
         }
-        public static string NodeExpression(IEnumerable<string> nodeLabels, Dictionary<string,object> nodeProps, string name = null, Dictionary<string, object> replacements = null)
+        public static string NodeExpression(IEnumerable<string> nodeLabels, Dictionary<string,object> nodeProps, string name = null, Dictionary<string, object> symbolsOverride = null)
         {
             nodeLabels = nodeLabels ?? throw new ArgumentNullException(nameof(nodeLabels));
             if (nodeLabels.Count() == 0) throw new ArgumentException($"{nameof(nodeLabels)} cannot be empty", nameof(nodeLabels));
             nodeProps = nodeProps ?? throw new ArgumentNullException(nameof(nodeProps));
-            if (nodeProps.Count == 0) throw new ArgumentException($"{nameof(nodeProps)} cannot be empty", nameof(nodeProps));
 
             name = name ?? "";
 
@@ -56,13 +58,14 @@ namespace N4pper
             nodeLabels.ToList().ForEach(p => sb.Append($":{p}"));
 
             sb.Append(" ");
-            sb.Append(ExpressionBody(nodeProps, replacements));
+            sb.Append(ExpressionBody(nodeProps, symbolsOverride));
 
             sb.Append(")");
 
             return sb.ToString();
         }
-        public static string RelationshipExpression(Relationship relationship, string name = null, Dictionary<string, object> replacements = null)
+
+        public static string RelationshipExpression(Relationship relationship, string name = null, Dictionary<string, object> symbolsOverride = null)
         {
             relationship = relationship ?? throw new ArgumentNullException(nameof(relationship));
                         
@@ -74,17 +77,16 @@ namespace N4pper
             sb.Append($":{relationship.EntityType}");
 
             sb.Append(" ");
-            sb.Append(ExpressionBody(relationship.ToDictionary(p => p.Key, p => p.Value), replacements));
+            sb.Append(ExpressionBody(relationship.ToDictionary(p => p.Key, p => p.Value), symbolsOverride));
 
             sb.Append("]");
 
             return sb.ToString();
         }
-        public static string RelationshipExpression(string relType, Dictionary<string, object> relProps, string name = null, Dictionary<string, object> replacements = null)
+        public static string RelationshipExpression(string relType, Dictionary<string, object> relProps, string name = null, Dictionary<string, object> symbolsOverride = null)
         {
             if(string.IsNullOrEmpty(relType)) throw new ArgumentException($"{nameof(relType)} cannot be null or empty", nameof(relType));
             relProps = relProps ?? throw new ArgumentNullException(nameof(relProps));
-            if (relProps.Count == 0) throw new ArgumentException($"{nameof(relProps)} cannot be empty", nameof(relProps));
 
             name = name ?? "";
 
@@ -94,40 +96,61 @@ namespace N4pper
             sb.Append($":{relType}");
 
             sb.Append(" ");
-            sb.Append(ExpressionBody(relProps, replacements));
+            sb.Append(ExpressionBody(relProps, symbolsOverride));
 
             sb.Append("]");
 
             return sb.ToString();
         }
 
-        public static string IdentityExpression(GraphEntity entity, string idName = "uuid", bool global = false)
+        public const string IdentityNodeLabel = "__UniqueId__";
+        public const string GlobalIdentityNodeLabel = "__GlobalUniqueId__";
+
+        public static string IdentityExpression(GraphEntity entity, string idName = "uuid")
         {
             entity = entity ?? throw new ArgumentNullException(nameof(entity));
 
-            if(!global)
-                return $"MERGE (id:__UniqueId__{{name:'{entity.EntityType}'}}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
-            else
-                return $"MERGE (id:__GlobalUniqueId__) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+            return IdentityExpression(entity.EntityType, idName);
         }
+        public static string IdentityExpression(string entityType, string idName = "uuid")
+        {
+            if(string.IsNullOrEmpty(entityType)) throw new ArgumentException("cannot be null or empty",nameof(entityType));
+
+            return $"MERGE (id:{IdentityNodeLabel}{{name:'{entityType}'}}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+        }
+
         public static string GlobalIdentityExpression(GraphEntity entity, string idName = "uuid")
         {
             entity = entity ?? throw new ArgumentNullException(nameof(entity));
 
-            return $"MERGE (id:GlobalUniqueId) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+            return GlobalIdentityExpression(entity.EntityType, idName);
         }
-        public static string SetExpression(GraphEntity entity, string name, Dictionary<string, object> replacements = null)
+        public static string GlobalIdentityExpression(string entityType, string idName = "uuid")
+        {
+            if (string.IsNullOrEmpty(entityType)) throw new ArgumentException("cannot be null or empty", nameof(entityType));
+
+            return $"MERGE (id:{GlobalIdentityNodeLabel}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+        }
+
+        public static string SetExpression(GraphEntity entity, string name, Dictionary<string, object> symbolsOverride = null)
         {
             entity = entity ?? throw new ArgumentNullException(nameof(entity));
-            if(string.IsNullOrEmpty(name)) throw new ArgumentException($"name cannot be null or empty", nameof(name));
-            replacements = replacements ?? new Dictionary<string, object>();
+
+            return SetExpression(entity.ToDictionary(p=>p.Key, p=>p.Value), name, symbolsOverride);
+        }
+        public static string SetExpression(Dictionary<string, object> entity, string name, Dictionary<string, object> symbolsOverride = null)
+        {
+            if (entity == null || entity.Count==0) throw new ArgumentException("cannot be null or empty", nameof(entity));
+
+            if (string.IsNullOrEmpty(name)) throw new ArgumentException($"name cannot be null or empty", nameof(name));
+            symbolsOverride = symbolsOverride ?? new Dictionary<string, object>();
 
             StringBuilder sb = new StringBuilder();
-            
-            foreach (KeyValuePair<string, object> kv in entity.ToDictionary(p => p.Key, p => p.Value).SelectValueTypesProperties())
+
+            foreach (KeyValuePair<string, object> kv in entity.SelectPrimitiveTypesProperties())
             {
                 sb.Append($"{name}.{kv.Key}=");
-                sb.Append(replacements.ContainsKey(kv.Key) ? replacements[kv.Key] : JsonConvert.SerializeObject(kv.Value));
+                sb.Append(symbolsOverride.ContainsKey(kv.Key) ? symbolsOverride[kv.Key] : JsonConvert.SerializeObject(kv.Value));
                 sb.Append(",");
             }
             sb.Remove(sb.Length - 1, 1);

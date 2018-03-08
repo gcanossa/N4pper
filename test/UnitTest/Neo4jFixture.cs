@@ -10,6 +10,7 @@ using N4pper;
 using N4pper.Diagnostic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using N4pper.Orm;
 
 namespace UnitTest
 {
@@ -25,12 +26,18 @@ namespace UnitTest
             sc.AddSingleton<N4pperOptions>(new N4pperOptions());
             sc.AddSingleton<TypeManager, ReflectionTypeManager>();
             sc.AddSingleton<GraphManager>();
+            sc.AddSingleton<N4pperManager>();
 
             sc.AddTransient<IQueryTracer, QueryTraceLogger>();
 
             sc.AddTransient<IDriver>(s => GraphDatabase.Driver(new Uri(Configuration.GetConnectionString("DefaultConnection")), AuthTokens.None));
 
             sc.AddLogging(builder => builder.AddDebug());
+            
+            OrmCoreTypes.Entity<OrmCoreTests.Person>();
+            OrmCoreTypes.Entity<OrmCoreTests.Student>(p => p.Id);
+            OrmCoreTypes.Entity<OrmCoreTests.Teacher>();
+            OrmCoreTypes.Entity<OrmCoreTests.Class>();
         }
 
         public void Configure()

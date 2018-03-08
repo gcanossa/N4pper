@@ -6,11 +6,12 @@ using System.Collections.Generic;
 using Xunit;
 using AsIKnow.Graph;
 using AsIKnow.XUnitExtensions;
+using N4pper.Orm;
 using N4pper.Diagnostic;
 
 namespace UnitTest
 {
-    [TestCaseOrderer(Constants.PriorityOrdererTypeName, Constants.PriorityOrdererTypeAssemblyName)]
+    [TestCaseOrderer(AsIKnow.XUnitExtensions.Constants.PriorityOrdererTypeName, AsIKnow.XUnitExtensions.Constants.PriorityOrdererTypeAssemblyName)]
     [Collection(nameof(Neo4jCollection))]
     public class OrmCoreTests
     {
@@ -21,13 +22,11 @@ namespace UnitTest
             Fixture = fixture;
         }
 
-        public (IDriver, GraphManager, N4pperOptions, IQueryTracer) SetUp()
+        public (IDriver, N4pperManager) SetUp()
         {
             return (
                 Fixture.GetService<IDriver>(),
-                Fixture.GetService<GraphManager>(),
-                Fixture.GetService<N4pperOptions>(),
-                Fixture.GetService<IQueryTracer>()
+                Fixture.GetService<N4pperManager>()
                 );
         }
 
@@ -55,7 +54,7 @@ namespace UnitTest
             public int Id { get; set; }
             public string Name { get; set; }
         }
-                
+        
         public class TestQueryTracer : IQueryTracer
         {
             public void Trace(string query)
@@ -73,13 +72,13 @@ namespace UnitTest
         [Fact(DisplayName = nameof(NodeCreation))]
         public void NodeCreation()
         {
-            (IDriver driver, GraphManager mgr, N4pperOptions options, IQueryTracer tracer) = SetUp();
+            (IDriver driver, N4pperManager mgr) = SetUp();
             
-            using (ISession session = driver.Session().WithGraphManager(mgr, options, tracer))
+            using (ISession session = driver.Session().WithGraphManager(mgr))
             {
-                int count = session.Run("MATCH (p:Person) RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                int count = session.Run($"MATCH (p) WHERE NOT p:{StatementHelpers.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
-                Person p = session.NewNodeUnique<Person>(new Person() { Age=1, Name="pippy" });
+                Person p = session.AddOrUpdateNode<Person>(new Person() { Age=1, Name="pippy" });
 
                 Assert.True(0 < p.Id);
 
@@ -89,8 +88,8 @@ namespace UnitTest
                 Assert.Equal(2, p.Age);
 
                 Assert.Equal(1, session.DeleteNode(p));
-
-                int newcount = session.Run("MATCH (p:Person) RETURN COUNT(p)").Select(x=>x.Values[x.Keys[0]].As<int>()).First();
+                
+                int newcount = session.Run($"MATCH (p) WHERE NOT p:{StatementHelpers.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x=>x.Values[x.Keys[0]].As<int>()).First();
                 Assert.Equal(count, newcount);
 
                 Assert.Equal(0, session.DeleteNode(p));
@@ -102,27 +101,32 @@ namespace UnitTest
         [Fact(DisplayName = nameof(RelCreation))]
         public void RelCreation()
         {
-            (IDriver driver, GraphManager mgr, N4pperOptions options, IQueryTracer tracer) = SetUp();
+            (IDriver driver, N4pperManager mgr) = SetUp();
             
-            using (ISession session = driver.Session().WithGraphManager(mgr, options, tracer))
+            using (ISession session = driver.Session().WithGraphManager(mgr))
             {
-                Student s1 = session.NewNodeUnique<Student>(new Student() { Age = 17, Name = "luca" });
-                Student s2 = session.NewNodeUnique<Student>(new Student() { Age = 18, Name = "piero" });
-                Student s3 = session.NewNodeUnique<Student>(new Student() { Age = 15, Name = "mario" });
+                int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
-                Teacher t1 = session.NewNodeUnique<Teacher>(new Teacher() { Age = 28, Name = "valentina" });
+                Student s1 = session.AddOrUpdateNode<Student>(new Student() { Age = 17, Name = "luca" });
+                Student s2 = session.AddOrUpdateNode<Student>(new Student() { Age = 18, Name = "piero" });
+                Student s3 = session.AddOrUpdateNode<Student>(new Student() { Age = 15, Name = "mario" });
 
-                Class c = session.NewRelUnique<Class, Student, Teacher>(new Class() { Name = "3 A" }, s1, t1);
+                Teacher t1 = session.AddOrUpdateNode<Teacher>(new Teacher() { Age = 28, Name = "valentina" });
+
+                Class c = session.AddOrUpdateRel<Class, Student, Teacher>(new Class() { Name = "3 A" }, s1, t1);
 
                 Assert.True(0 < c.Id);
 
                 c.Name = "3° A";
-                c = session.AddOrUpdateRel<Class>(c);
+                c = session.AddOrUpdateRel<Class, Student, Teacher>(c);
 
                 Assert.Equal("3° A", c.Name);
-
+                
                 Assert.Equal(1,session.DeleteRel<Class>(c));
                 Assert.Equal(0, session.DeleteRel<Class>(c));
+
+                int newcount = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                Assert.Equal(count, newcount);
             }
         }
     }

@@ -10,11 +10,9 @@ namespace N4pper
 {
     public static class ISessionExtensions
     {
-        public static ISession WithGraphManager(this ISession ext, GraphManager manager, N4pperOptions options = null, IQueryTracer tracer = null)
+        public static ISession WithGraphManager(this ISession ext, N4pperManager manager)
         {
-            options = options ?? new N4pperOptions();
-
-            return new GraphManagedSession(ext, manager, options, tracer);
+            return new GraphManagedSession(ext, manager);
         }
     }
 }
