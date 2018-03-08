@@ -55,6 +55,49 @@ namespace UnitTest
             public string Name { get; set; }
         }
         
+        public interface IEntity
+        {
+            int Id { get; }
+        }
+        public interface IContent : IEntity
+        {
+
+        }
+        public interface IExercise : IContent
+        {
+
+        }
+        public interface IExplaination : IContent
+        {
+
+        }
+        public class Question : IExercise
+        {
+            public int Id { get; set; }
+            public Student DoneBy { get; set; }
+        }
+        public class Suggestion : IExplaination
+        {
+            public int Id { get; set; }
+            public Teacher GivenBy { get; set; }
+        }
+
+        public class ContentPersonRel : IEntity
+        {
+            public int Id { get; set; }
+            public Person Person { get; set; }
+            public IContent Content { get; set; }
+        }
+
+        public class ContentHolder : IContent
+        {
+            public int Id { get; set; }
+        }
+        public class EntityHolder : IEntity
+        {
+            public int Id { get; set; }
+        }
+
         public class TestQueryTracer : IQueryTracer
         {
             public void Trace(string query)
@@ -124,6 +167,74 @@ namespace UnitTest
                 
                 Assert.Equal(1,session.DeleteRel<Class>(c));
                 Assert.Equal(0, session.DeleteRel<Class>(c));
+
+                int newcount = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                Assert.Equal(count, newcount);
+            }
+        }
+
+        [TestPriority(0)]
+        [Trait("Category", nameof(OrmCoreTests))]
+        [Fact(DisplayName = nameof(Query))]
+        public void Query()
+        {
+            (IDriver driver, N4pperManager mgr) = SetUp();
+
+            using (ISession session = driver.Session().WithGraphManager(mgr))
+            {
+                int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+
+                Student s1 = session.AddOrUpdateNode<Student>(new Student() { Age = 17, Name = "luca" });
+                Student s2 = session.AddOrUpdateNode<Student>(new Student() { Age = 18, Name = "piero" });
+                Student s3 = session.AddOrUpdateNode<Student>(new Student() { Age = 15, Name = "mario" });
+
+                Teacher t1 = session.AddOrUpdateNode<Teacher>(new Teacher() { Age = 28, Name = "valentina" });
+                Teacher t2 = session.AddOrUpdateNode<Teacher>(new Teacher() { Age = 30, Name = "gianmaria" });
+
+                Question[] qs = new Question[] { new Question(), new Question(), new Question(), new Question(), new Question() };
+
+                session.WriteTransaction(tx => 
+                {
+                    qs = tx.AddOrUpdateNodes(qs).ToArray();
+                });
+
+                Suggestion[] ss = new Suggestion[] { new Suggestion(), new Suggestion() };
+
+                session.WriteTransaction(tx =>
+                {
+                    ss = tx.AddOrUpdateNodes(ss).ToArray();
+                });
+
+                ContentPersonRel rel1 = session.AddOrUpdateRel(new ContentPersonRel(), s1, qs[0]);
+                ContentPersonRel rel2 = session.AddOrUpdateRel(new ContentPersonRel(), s2, qs[1]);
+                ContentPersonRel rel3 = session.AddOrUpdateRel(new ContentPersonRel(), s3, qs[0]);
+
+                ContentPersonRel rel4 = session.AddOrUpdateRel(new ContentPersonRel(), t1, ss[0]);
+
+                var tmp1 = session.QueryForNode<IContent, ContentHolder>();
+                Assert.Equal(ss.Length + qs.Length, tmp1.Count());
+
+                var tmp2 = session.QueryForRel<IEntity, EntityHolder>();
+                Assert.Equal(4, tmp2.Count());
+
+                var tmp3 = session.QueryForRel<ContentPersonRel, Student, Question>((r,s,q)=> { r.Content = q; r.Person = s; return r; });
+                Assert.Equal(3, tmp3.Count());
+
+                session.WriteTransaction(tx =>
+                {
+                    tx.DeleteRel(rel1);
+                    tx.DeleteRel(rel2);
+                    tx.DeleteRel(rel3);
+                    tx.DeleteRel(rel4);
+
+                    tx.DeleteNode(s1);
+                    tx.DeleteNode(s2);
+                    tx.DeleteNode(s3);
+                    tx.DeleteNode(t1);
+                    tx.DeleteNode(t2);
+                    tx.DeleteNodes(qs);
+                    tx.DeleteNodes(ss);
+                });
 
                 int newcount = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
                 Assert.Equal(count, newcount);

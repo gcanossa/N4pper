@@ -38,6 +38,10 @@ namespace UnitTest
             OrmCoreTypes.Entity<OrmCoreTests.Student>(p => p.Id);
             OrmCoreTypes.Entity<OrmCoreTests.Teacher>();
             OrmCoreTypes.Entity<OrmCoreTests.Class>();
+
+            OrmCoreTypes.Entity<OrmCoreTests.Question>();
+            OrmCoreTypes.Entity<OrmCoreTests.Suggestion>();
+            OrmCoreTypes.Entity<OrmCoreTests.ContentPersonRel>();
         }
 
         public void Configure()

@@ -1,6 +1,5 @@
 ﻿using AsIKnow.Graph;
 using Neo4j.Driver.V1;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -55,7 +54,10 @@ namespace N4pper
 
             IStatementResult result;
             if (param != null)
-                result = ext.Run(query, param);
+                if(param is IDictionary<string, object>)
+                    result = ext.Run(query, (IDictionary<string, object>)param);
+                else
+                    result = ext.Run(query, param);
             else
                 result = ext.Run(query);
 
