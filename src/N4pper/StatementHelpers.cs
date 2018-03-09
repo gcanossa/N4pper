@@ -13,26 +13,50 @@ namespace N4pper
     {
         public const string IdentityNodeLabel = "__UniqueId__";
         public const string GlobalIdentityNodeLabel = "__GlobalUniqueId__";
+
+        private static Random RndGen = new Random();
+
+        private static (int, long) GetSlot()
+        {
+            int tmp = RndGen.Next(Int32.MaxValue - 1);
+            return (tmp, (Int64.MaxValue / Int32.MaxValue) * tmp );
+        }
         
         public static string IdentityExpression(string entityType, string idName = "uuid")
         {
             if (string.IsNullOrEmpty(entityType)) throw new ArgumentException("cannot be null or empty", nameof(entityType));
 
-            return $"MERGE (id:{IdentityNodeLabel}{{name:'{entityType}'}}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+            (int slot, long baseCount) = GetSlot();
+
+            return $"MERGE (id:{IdentityNodeLabel}{{name:'{entityType}', slot:{slot}}}) ON CREATE SET id.count = {baseCount} ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
         }
-        
+        public static string IdentityExpression(IEnumerable<string> nodeLabels, string idName = "uuid")
+        {
+            nodeLabels = nodeLabels ?? throw new ArgumentNullException(nameof(nodeLabels));
+            if (nodeLabels.Count() == 0) throw new ArgumentException("cannot be or empty", nameof(nodeLabels));
+
+            string name = string.Join("_", nodeLabels.OrderBy(p=>p).ToArray());
+            (int slot, long baseCount) = GetSlot();
+
+            return $"MERGE (id:{IdentityNodeLabel}{{name:'{name}', slot:{slot}}}) ON CREATE SET id.count = {baseCount} ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+        }
+
         public static string GlobalIdentityExpression(string entityType, string idName = "uuid")
         {
             if (string.IsNullOrEmpty(entityType)) throw new ArgumentException("cannot be null or empty", nameof(entityType));
 
-            return $"MERGE (id:{GlobalIdentityNodeLabel}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+            (int slot, long baseCount) = GetSlot();
+
+            return $"MERGE (id:{GlobalIdentityNodeLabel} {{slot:{slot}}}) ON CREATE SET id.count = {baseCount} ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
         }
         public static string GlobalIdentityExpression(IEnumerable<string> nodeLabels, string idName = "uuid")
         {
             nodeLabels = nodeLabels ?? throw new ArgumentNullException(nameof(nodeLabels));
             if (nodeLabels.Count() == 0) throw new ArgumentException("cannot be or empty", nameof(nodeLabels));
 
-            return $"MERGE (id:{GlobalIdentityNodeLabel}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
+            (int slot, long baseCount) = GetSlot();
+
+            return $"MERGE (id:{GlobalIdentityNodeLabel} {{slot:{slot}}}) ON CREATE SET id.count = {baseCount} ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
         }
 
         public static string NodeExpression(IEnumerable<string> nodeLabels, Dictionary<string,object> nodeProps, string name = null, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)

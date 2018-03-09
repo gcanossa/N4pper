@@ -33,7 +33,7 @@ namespace UnitTest
 
         public class Person
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
             public string Name { get; set; }
             public int Age { get; set; }
         }
@@ -50,13 +50,13 @@ namespace UnitTest
 
         public class Class
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
             public string Name { get; set; }
         }
         
         public interface IEntity
         {
-            int Id { get; }
+            long Id { get; }
         }
         public interface IContent : IEntity
         {
@@ -72,29 +72,29 @@ namespace UnitTest
         }
         public class Question : IExercise
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
             public Student DoneBy { get; set; }
         }
         public class Suggestion : IExplaination
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
             public Teacher GivenBy { get; set; }
         }
 
         public class ContentPersonRel : IEntity
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
             public Person Person { get; set; }
             public IContent Content { get; set; }
         }
 
         public class ContentHolder : IContent
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
         }
         public class EntityHolder : IEntity
         {
-            public int Id { get; set; }
+            public long Id { get; set; }
         }
 
         public class TestQueryTracer : IQueryTracer
