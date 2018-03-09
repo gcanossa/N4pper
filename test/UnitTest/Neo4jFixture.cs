@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Neo4j.Driver.V1;
-using AsIKnow.Graph;
 using N4pper;
 using N4pper.Diagnostic;
 using Microsoft.Extensions.Configuration;
@@ -21,11 +20,7 @@ namespace UnitTest
     {
         protected override void ConfigureServices(ServiceCollection sc)
         {
-            sc.AddSingleton<TypeManagerOptions>(new TypeManagerOptions());
-
             sc.AddSingleton<N4pperOptions>(new N4pperOptions());
-            sc.AddSingleton<TypeManager, ReflectionTypeManager>();
-            sc.AddSingleton<GraphManager>();
             sc.AddSingleton<N4pperManager>();
 
             sc.AddTransient<IQueryTracer, QueryTraceLogger>();

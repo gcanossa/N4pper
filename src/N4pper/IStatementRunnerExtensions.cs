@@ -1,5 +1,4 @@
-﻿using AsIKnow.Graph;
-using Neo4j.Driver.V1;
+﻿using Neo4j.Driver.V1;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +6,7 @@ using System.Linq;
 using N4pper.Decorators;
 using System.Text;
 using System.Threading.Tasks;
+using OMnG;
 
 namespace N4pper
 {
@@ -14,43 +14,18 @@ namespace N4pper
     {
         //TODO: add async support, cause of Neo4J.Driver ConsumingEnumerables has to be used.
         #region helpers
-
-        private static GraphEntity Map(object obj, GraphManager manager)
+        
+        private static T Map<T>(IEntity entity) where T : class, new()
         {
-            if (obj is INode)
-                return MapNode((INode)obj, manager);
-            else if (obj is IRelationship)
-                return MapRelationship((IRelationship)obj, manager);
-            else
-                throw new ArgumentException($"Unable to map type {obj.GetType().FullName}", nameof(obj));
+            return new T().CopyProperties(entity.Properties.ToDictionary(p => p.Key, p => p.Value));
         }
-        private static Node MapNode(INode node, GraphManager manager)
-        {
-            Node result = manager.CreateNode();
-
-            manager.Manager.GetTypesFromLabels(node.Labels).ToList().ForEach(p => result.AddLabel(p));
-
-            result.SetProps(node.Properties);
-
-            return result;
-        }
-        private static Relationship MapRelationship(IRelationship relationship, GraphManager manager)
-        {
-            Relationship result = manager.CreateRelationship();
-
-            result.OfType(manager.Manager.GetTypesFromLabels(new[] { relationship.Type }).First());
-
-            result.SetProps(relationship.Properties);
-
-            return result;
-        }
-
+        
         private static IStatementResult GetResult(IStatementRunner ext, string query, object param)
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             query = query ?? throw new ArgumentNullException(nameof(query));
 
-            GraphManager mgr = (ext as IGraphManagedStatementRunner)?.Manager?.Manager ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
+            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
             IStatementResult result;
             if (param != null)
@@ -66,11 +41,11 @@ namespace N4pper
 
         #endregion
 
-        public static IResultSummary Execute<T>(this IStatementRunner ext, string query, object param = null) where T : class, new()
+        public static IResultSummary Execute(this IStatementRunner ext, string query, object param = null)
         {
             return GetResult(ext, query, param).Summary;
         }
-        public static IEnumerable<IResultSummary> Execute<T>(this IStatementRunner ext, string query, params object[] param) where T : class, new()
+        public static IEnumerable<IResultSummary> Execute(this IStatementRunner ext, string query, params object[] param)
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             query = query ?? throw new ArgumentNullException(nameof(query));
@@ -80,7 +55,7 @@ namespace N4pper
                         
             foreach (object item in param)
             {
-                yield return ext.Execute<T>(query, item);
+                yield return ext.Execute(query, item);
             }
         }
 
@@ -89,12 +64,12 @@ namespace N4pper
             IStatementResult result = GetResult(ext, query, param);
             List<IRecord> records = result.ToList();
 
-            GraphManager mgr = (ext as IGraphManagedStatementRunner)?.Manager?.Manager;
+            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner);
 
             if (result.Keys.Count < 1)
                 throw new Exception("The query did not produced enough results");
-
-            return records.Select(p => Map(p.Values[p.Keys[0]], mgr).FillObject<T>()).ToList();
+            
+            return records.Select(p => Map<T>((IEntity)p.Values[p.Keys[0]])).ToList();
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T>(this IStatementRunner ext, string query, params object[] param) where T : class, new()
         {
@@ -119,15 +94,13 @@ namespace N4pper
             IStatementResult result = GetResult(ext, query, param);
             List<IRecord> records = result.ToList();
 
-            GraphManager mgr = (ext as IGraphManagedStatementRunner)?.Manager?.Manager;
-
             if (result.Keys.Count < 2)
                 throw new Exception("The query did not produced enough results");
 
             return records.Select(p => 
                 map(
-                    Map(p.Values[p.Keys[0]], mgr).FillObject<T>(), 
-                    Map(p.Values[p.Keys[1]], mgr).FillObject<T1>())
+                    Map<T>((IEntity)p.Values[p.Keys[0]]), 
+                    Map<T1>((IEntity)p.Values[p.Keys[1]]))
                     ).ToList();
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, params object[] param)
@@ -153,16 +126,14 @@ namespace N4pper
             IStatementResult result = GetResult(ext, query, param);
             List<IRecord> records = result.ToList();
 
-            GraphManager mgr = (ext as IGraphManagedStatementRunner)?.Manager?.Manager;
-
             if (result.Keys.Count < 3)
                 throw new Exception("The query did not produced enough results");
 
             return records.Select(p =>
                 map(
-                    Map(p.Values[p.Keys[0]], mgr).FillObject<T>(),
-                    Map(p.Values[p.Keys[1]], mgr).FillObject<T1>(),
-                    Map(p.Values[p.Keys[2]], mgr).FillObject<T2>())
+                    Map<T>((IEntity)p.Values[p.Keys[0]]),
+                    Map<T1>((IEntity)p.Values[p.Keys[1]]),
+                    Map<T2>((IEntity)p.Values[p.Keys[2]]))
                     ).ToList();
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, params object[] param)
@@ -189,18 +160,16 @@ namespace N4pper
 
             IStatementResult result = GetResult(ext, query, param);
             List<IRecord> records = result.ToList();
-
-            GraphManager mgr = (ext as IGraphManagedStatementRunner)?.Manager?.Manager;
-
+            
             if (result.Keys.Count < 4)
                 throw new Exception("The query did not produced enough results");
 
             return records.Select(p =>
                 map(
-                    Map(p.Values[p.Keys[0]], mgr).FillObject<T>(),
-                    Map(p.Values[p.Keys[1]], mgr).FillObject<T1>(),
-                    Map(p.Values[p.Keys[2]], mgr).FillObject<T2>(),
-                    Map(p.Values[p.Keys[3]], mgr).FillObject<T3>())
+                    Map<T>((IEntity)p.Values[p.Keys[0]]),
+                    Map<T1>((IEntity)p.Values[p.Keys[1]]),
+                    Map<T2>((IEntity)p.Values[p.Keys[2]]),
+                    Map<T3>((IEntity)p.Values[p.Keys[3]]))
                     ).ToList();
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, params object[] param)
@@ -230,18 +199,16 @@ namespace N4pper
             IStatementResult result = GetResult(ext, query, param);
             List<IRecord> records = result.ToList();
 
-            GraphManager mgr = (ext as IGraphManagedStatementRunner)?.Manager?.Manager;
-
             if (result.Keys.Count < 5)
                 throw new Exception("The query did not produced enough results");
 
             return records.Select(p =>
                 map(
-                    Map(p.Values[p.Keys[0]], mgr).FillObject<T>(),
-                    Map(p.Values[p.Keys[1]], mgr).FillObject<T1>(),
-                    Map(p.Values[p.Keys[2]], mgr).FillObject<T2>(),
-                    Map(p.Values[p.Keys[3]], mgr).FillObject<T3>(),
-                    Map(p.Values[p.Keys[4]], mgr).FillObject<T4>())
+                    Map<T>((IEntity)p.Values[p.Keys[0]]),
+                    Map<T1>((IEntity)p.Values[p.Keys[1]]),
+                    Map<T2>((IEntity)p.Values[p.Keys[2]]),
+                    Map<T3>((IEntity)p.Values[p.Keys[3]]),
+                    Map<T4>((IEntity)p.Values[p.Keys[4]]))
                     ).ToList();
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, params object[] param)

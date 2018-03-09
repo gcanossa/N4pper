@@ -4,7 +4,6 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using Xunit;
-using AsIKnow.Graph;
 using AsIKnow.XUnitExtensions;
 using N4pper.Orm;
 using N4pper.Diagnostic;

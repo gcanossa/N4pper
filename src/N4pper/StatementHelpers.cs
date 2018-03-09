@@ -1,5 +1,4 @@
-﻿using AsIKnow.Graph;
-using N4pper.Decorators;
+﻿using N4pper.Decorators;
 using Neo4j.Driver.V1;
 using OMnG;
 using System;
@@ -14,41 +13,28 @@ namespace N4pper
     {
         public const string IdentityNodeLabel = "__UniqueId__";
         public const string GlobalIdentityNodeLabel = "__GlobalUniqueId__";
-
-        public static string IdentityExpression(GraphEntity entity, string idName = "uuid")
-        {
-            entity = entity ?? throw new ArgumentNullException(nameof(entity));
-
-            return IdentityExpression(entity.EntityType, idName);
-        }
+        
         public static string IdentityExpression(string entityType, string idName = "uuid")
         {
             if (string.IsNullOrEmpty(entityType)) throw new ArgumentException("cannot be null or empty", nameof(entityType));
 
             return $"MERGE (id:{IdentityNodeLabel}{{name:'{entityType}'}}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
         }
-
-        public static string GlobalIdentityExpression(GraphEntity entity, string idName = "uuid")
-        {
-            entity = entity ?? throw new ArgumentNullException(nameof(entity));
-
-            return GlobalIdentityExpression(entity.EntityType, idName);
-        }
+        
         public static string GlobalIdentityExpression(string entityType, string idName = "uuid")
         {
             if (string.IsNullOrEmpty(entityType)) throw new ArgumentException("cannot be null or empty", nameof(entityType));
 
             return $"MERGE (id:{GlobalIdentityNodeLabel}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
         }
-                
-        public static string NodeExpression(Node node, string name = null, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)
+        public static string GlobalIdentityExpression(IEnumerable<string> nodeLabels, string idName = "uuid")
         {
-            node = node ?? throw new ArgumentNullException(nameof(node));
-                        
-            name = name ?? "";
+            nodeLabels = nodeLabels ?? throw new ArgumentNullException(nameof(nodeLabels));
+            if (nodeLabels.Count() == 0) throw new ArgumentException("cannot be or empty", nameof(nodeLabels));
 
-            return NodeExpression(node.Labels, node.ToDictionary(p=>p.Key,p=>p.Value).SelectPrimitiveTypesProperties() , name, symbolsOverride, paramSuffix);
+            return $"MERGE (id:{GlobalIdentityNodeLabel}) ON CREATE SET id.count = 1 ON MATCH SET id.count = id.count + 1 WITH id.count AS {idName}";
         }
+
         public static string NodeExpression(IEnumerable<string> nodeLabels, Dictionary<string,object> nodeProps, string name = null, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)
         {
             nodeLabels = nodeLabels ?? throw new ArgumentNullException(nameof(nodeLabels));
@@ -69,15 +55,7 @@ namespace N4pper
 
             return sb.ToString();
         }
-
-        public static string RelationshipExpression(Relationship relationship, string name = null, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)
-        {
-            relationship = relationship ?? throw new ArgumentNullException(nameof(relationship));
-                        
-            name = name ?? "";
-
-            return RelationshipExpression(relationship.EntityType, relationship.ToDictionary(p => p.Key, p => p.Value).SelectPrimitiveTypesProperties(), name, symbolsOverride, paramSuffix);
-        }
+        
         public static string RelationshipExpression(string relType, Dictionary<string, object> relProps, string name = null, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)
         {
             if(string.IsNullOrEmpty(relType)) throw new ArgumentException($"{nameof(relType)} cannot be null or empty", nameof(relType));
@@ -121,13 +99,7 @@ namespace N4pper
 
             return sb.ToString();
         }
-
-        public static string SetExpression(GraphEntity entity, string name, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)
-        {
-            entity = entity ?? throw new ArgumentNullException(nameof(entity));
-
-            return SetExpression(entity.ToDictionary(p=>p.Key, p=>p.Value), name, symbolsOverride, paramSuffix);
-        }
+        
         public static string SetExpression(Dictionary<string, object> entity, string name, Dictionary<string, object> symbolsOverride = null, string paramSuffix = null)
         {
             if (entity == null || entity.Count==0) throw new ArgumentException("cannot be null or empty", nameof(entity));
