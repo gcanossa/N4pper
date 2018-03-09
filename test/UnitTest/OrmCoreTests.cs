@@ -213,9 +213,12 @@ namespace UnitTest
                 var tmp1 = session.QueryForNode<IContent, ContentHolder>();
                 Assert.Equal(ss.Length + qs.Length, tmp1.Count());
 
-                var tmp2 = session.QueryForRel<IEntity, EntityHolder>();
-                Assert.Equal(4, tmp2.Count());
+                var tmp1_ = session.QueryForNode<IEntity, ContentHolder>();
+                Assert.Equal(ss.Length + qs.Length, tmp1_.Count());
 
+                var tmp2 = session.QueryForRel<ContentPersonRel>();
+                Assert.Equal(4, tmp2.Count());
+                
                 var tmp3 = session.QueryForRel<ContentPersonRel, Student, Question>((r,s,q)=> { r.Content = q; r.Person = s; return r; });
                 Assert.Equal(3, tmp3.Count());
 
