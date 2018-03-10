@@ -33,11 +33,11 @@ namespace N4pper.Orm
             if(value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
                 string uuid = OrmCoreHelpers.TempSymbol();
-                sb.Append($"{StatementHelpers.GlobalIdentityExpression(typeof(TNode).GetLabels(), uuid)} ");
+                sb.Append($"{StatementHelpers.GlobalIdentityExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), uuid)} ");
                 symbolsOverride = new Dictionary<string, object>() { { Constants.IdentityPropertyName, uuid } };
             }
 
-            sb.Append($"MERGE {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]), n, symbolsOverride)} WITH {n} ");
+            sb.Append($"MERGE {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]), n, symbolsOverride)} WITH {n} ");
             if(symbolsOverride!=null)
             {
                 foreach (object item in symbolsOverride.Values)
@@ -73,7 +73,7 @@ namespace N4pper.Orm
                         
             string n = OrmCoreHelpers.TempSymbol();
 
-            return ext.Execute($"MATCH {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]), n)} DELETE {n}", value).Counters.NodesDeleted;
+            return ext.Execute($"MATCH {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]), n)} DELETE {n}", value).Counters.NodesDeleted;
         }
         public static int DeleteNodes<TNode>(this ITransaction ext, IEnumerable<TNode> value) where TNode : class
         {
@@ -116,7 +116,7 @@ namespace N4pper.Orm
             if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
                 string uuid = OrmCoreHelpers.TempSymbol();
-                sb.Append($"{StatementHelpers.GlobalIdentityExpression(typeof(TRel).GetLabel(), uuid)} ");
+                sb.Append($"{StatementHelpers.GlobalIdentityExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), uuid)} ");
                 symbolsOverride = new Dictionary<string, object>() { { Constants.IdentityPropertyName, uuid } };
             }
 
@@ -128,7 +128,7 @@ namespace N4pper.Orm
             if (source != null)
             {
                 Dictionary<string, object> k = source.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)]);
-                sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(), k, nS, new Dictionary<string, object>(), nameof(nS)));
+                sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(OrmCoreTypes.OMnGConfiguration), k, nS, new Dictionary<string, object>(), nameof(nS)));
                 foreach (KeyValuePair<string, object> kv in k)
                 {
                     parameters.Add($"{kv.Key}{nameof(nS)}", kv.Value);
@@ -136,14 +136,14 @@ namespace N4pper.Orm
             }
             else
             {
-                sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(), new Dictionary<string, object>(), nS));
+                sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(OrmCoreTypes.OMnGConfiguration), new Dictionary<string, object>(), nS));
             }
             sb.Append(" MATCH ");
             string nD = OrmCoreHelpers.TempSymbol();
             if (destination != null)
             {
                 Dictionary<string, object> k = destination.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)]);
-                sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(), k, nD, new Dictionary<string, object>(), nameof(nD)));
+                sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(OrmCoreTypes.OMnGConfiguration), k, nD, new Dictionary<string, object>(), nameof(nD)));
                 foreach (KeyValuePair<string, object> kv in k)
                 {
                     parameters.Add($"{kv.Key}{nameof(nD)}", kv.Value);
@@ -151,13 +151,13 @@ namespace N4pper.Orm
             }
             else
             {
-                sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(), new Dictionary<string, object>(), nD));
+                sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(OrmCoreTypes.OMnGConfiguration), new Dictionary<string, object>(), nD));
             }
             if (source == null || destination == null)
             {
                 sb.Append(" MATCH ");
                 sb.Append($" ({nS})-");
-                sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r, symbolsOverride, nameof(r)));
+                sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r, symbolsOverride, nameof(r)));
                 sb.Append($"->({nD})");
             }
             else
@@ -165,7 +165,7 @@ namespace N4pper.Orm
                 sb.Append(" MERGE");
                 sb.Append($" ({nS})-");
 
-                sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r, symbolsOverride, nameof(r)));
+                sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r, symbolsOverride, nameof(r)));
 
                 sb.Append($"->({nD})");
             }
@@ -223,7 +223,7 @@ namespace N4pper.Orm
             string r = OrmCoreHelpers.TempSymbol();
 
             StringBuilder sb = new StringBuilder();
-            sb.Append($"MATCH ()-{StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r)}->()");
+            sb.Append($"MATCH ()-{StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r)}->()");
 
             sb.Append($" DELETE {r}");
 
@@ -286,7 +286,7 @@ namespace N4pper.Orm
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n)} RETURN {n} ");
+            sb.Append($"MATCH {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n)} RETURN {n} ");
 
             return ext.ExecuteQuery<TResult>(sb.ToString(), param).Select(p => p);
         }
@@ -308,9 +308,9 @@ namespace N4pper.Orm
             StringBuilder sb = new StringBuilder();
 
             sb.Append($"MATCH ");
-            sb.Append(StatementHelpers.NodeExpression(typeof(TNode).GetLabels(), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n));
+            sb.Append(StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n));
             sb.Append("-");
-            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), relParam?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
+            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), relParam?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
             sb.Append("->()");
             sb.Append($" RETURN {n},{r} ");
 
@@ -335,9 +335,9 @@ namespace N4pper.Orm
 
             sb.Append($"MATCH ");
             sb.Append("()-");
-            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), relParam?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
+            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), relParam?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
             sb.Append("->");
-            sb.Append(StatementHelpers.NodeExpression(typeof(TNode).GetLabels(), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n));
+            sb.Append(StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n));
             sb.Append($" RETURN {n},{r} ");
 
             return ext.ExecuteQuery<TNodeResult, TRelResult>(sb.ToString(), map, param);
@@ -355,7 +355,7 @@ namespace N4pper.Orm
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH ()-{StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), param?.ToPropDictionary() ?? new Dictionary<string, object>(), r)}->() RETURN {r} ");
+            sb.Append($"MATCH ()-{StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), r)}->() RETURN {r} ");
 
             return ext.ExecuteQuery<TResult>(sb.ToString(), param);
         }
@@ -380,11 +380,11 @@ namespace N4pper.Orm
             StringBuilder sb = new StringBuilder();
 
             sb.Append($"MATCH ");
-            sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(), sourceParam?.ToPropDictionary() ?? new Dictionary<string, object>(), nS));
+            sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(OrmCoreTypes.OMnGConfiguration), sourceParam?.ToPropDictionary() ?? new Dictionary<string, object>(), nS));
             sb.Append("-");
-            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(), param?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
+            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
             sb.Append("->");
-            sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(), destinationParam?.ToPropDictionary() ?? new Dictionary<string, object>(), nD));
+            sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(OrmCoreTypes.OMnGConfiguration), destinationParam?.ToPropDictionary() ?? new Dictionary<string, object>(), nD));
             sb.Append($" RETURN {r},{nS},{nD} ");
 
             return ext.ExecuteQuery<TResult, SResult, DResult>(sb.ToString(), map, param);
