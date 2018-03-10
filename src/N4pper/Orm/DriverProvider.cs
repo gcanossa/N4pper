@@ -24,4 +24,11 @@ namespace N4pper.Orm
             return new GraphManagedDriver(GraphDatabase.Driver(Uri, AuthToken, Config), Manager);
         }
     }
+
+    public abstract class DriverProvider<T> : DriverProvider where T : GraphContext
+    {
+        public DriverProvider(N4pperManager manager) : base(manager)
+        {
+        }
+    }
 }

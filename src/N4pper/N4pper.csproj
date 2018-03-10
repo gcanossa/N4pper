@@ -16,6 +16,10 @@
     <PackageReference Include="OMnG" Version="0.1.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Orm\Interceptors\" />
+  </ItemGroup>
+
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="if &quot;$(ConfigurationName)&quot; == &quot;Release&quot; (&#xD;&#xA;cd &quot;$(SolutionDir)..\build&quot;&#xD;&#xA;del /F $(ProjectName).*&#xD;&#xA;cd &quot;$(ProjectDir)&quot; &#xD;&#xA;dotnet pack --output &quot;$(SolutionDir)..\build&quot;&#xD;&#xA;)" />
   </Target>

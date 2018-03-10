@@ -27,22 +27,34 @@ namespace UnitTest
             sc.AddTransient<IQueryTracer, QueryTraceLogger>();
 
             sc.AddTransient<Neo4jServer_DriverBuilder>(provider=> new Neo4jServer_DriverBuilder(Configuration));
-            sc.AddTransient<Neo4jServer_DriverProvider>();
+            sc.AddTransient<TestContext>();
+            sc.AddTransient<DriverProvider<TestContext>, Neo4jServer_DriverProvider>();
             //sc.AddTransient<IDriver>(s => GraphDatabase.Driver(new Uri(Configuration.GetConnectionString("DefaultConnection")), AuthTokens.None));
 
             sc.AddLogging(builder => builder.AddDebug());
-            
-            OrmCoreTypes.Entity<OrmCoreTests.Person>();
-            OrmCoreTypes.Entity<OrmCoreTests.Student>(p => p.Id);
-            OrmCoreTypes.Entity<OrmCoreTests.Teacher>();
-            OrmCoreTypes.Entity<OrmCoreTests.Class>();
-
-            OrmCoreTypes.Entity<OrmCoreTests.Question>();
-            OrmCoreTypes.Entity<OrmCoreTests.Suggestion>();
-            OrmCoreTypes.Entity<OrmCoreTests.ContentPersonRel>();
         }
 
-        public class Neo4jServer_DriverProvider : DriverProvider
+        public class TestContext : GraphContext
+        {
+            public TestContext(DriverProvider<TestContext> provider) : base(provider)
+            {
+            }
+            protected override void OnModelCreating(GraphModelBuilder builder)
+            {
+                base.OnModelCreating(builder);
+
+                builder.Entity<OrmCoreTests.Person>();
+                builder.Entity<OrmCoreTests.Student>(p => p.Id);
+                builder.Entity<OrmCoreTests.Teacher>();
+                builder.Entity<OrmCoreTests.Class>();
+
+                builder.Entity<OrmCoreTests.Question>();
+                builder.Entity<OrmCoreTests.Suggestion>();
+                builder.Entity<OrmCoreTests.ContentPersonRel>();
+            }
+        }
+
+        public class Neo4jServer_DriverProvider : DriverProvider<TestContext>
         {
             private IConfigurationRoot _conf;
             public Neo4jServer_DriverProvider(IConfigurationRoot conf, N4pperManager manager)

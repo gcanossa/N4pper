@@ -8,9 +8,9 @@ using System.Text;
 
 namespace N4pper.Orm
 {
-    public static class OrmCoreTypes
+    internal static class OrmCoreTypes
     {
-        internal static TypeExtensionsConfiguration OMnGConfiguration { get; } = new TypeExtensionsConfiguration.CompressConfiguration();
+        internal static TypeExtensionsConfiguration OMnGConfiguration { get; } = new N4pperTypeExtensionsConfiguration();
         internal static Dictionary<Type, IEnumerable<string>> KnownTypes { get; private set; } = new Dictionary<Type, IEnumerable<string>>();
 
         private static void ValidateKey(Type type, IEnumerable<string> keyProps)
@@ -26,21 +26,21 @@ namespace N4pper.Orm
         }
         private static void AddType(Type type, IEnumerable<string> keyProps)
         {
-            if (KnownTypes.ContainsKey(type))
-                throw new InvalidOperationException($"type {type.FullName} already managed");
-
-            KnownTypes.Add(type, keyProps);
+            if (!KnownTypes.ContainsKey(type))
+                KnownTypes.Add(type, keyProps);
+            else if(string.Join(",",KnownTypes[type].OrderBy(p=>p)) != string.Join(",", keyProps.OrderBy(p => p)))
+                throw new InvalidOperationException($"type {type.FullName} already managed with a different key: '{string.Join(",", KnownTypes[type].OrderBy(p => p))}'");
         }
 
-        public static void Entity<T>(Expression<Func<T,object>> expr) where T : class
+        internal static void Entity<T>(Expression<Func<T,object>> expr) where T : class
         {
             Entity<T>(ObjectExtensions.ToPropertyNameCollection(expr));
         }
-        public static void Entity<T>(IEnumerable<string> keyProps = null) where T : class
+        internal static void Entity<T>(IEnumerable<string> keyProps = null) where T : class
         {
             Entity(typeof(T), keyProps);
         }
-        public static void Entity(Type type, IEnumerable<string> keyProps = null)
+        internal static void Entity(Type type, IEnumerable<string> keyProps = null)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
 

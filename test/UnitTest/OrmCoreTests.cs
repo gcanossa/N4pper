@@ -24,7 +24,7 @@ namespace UnitTest
         public (IDriver, N4pperManager) SetUp()
         {
             return (
-                Fixture.GetService<Neo4jFixture.Neo4jServer_DriverProvider>().GetDriver(),
+                Fixture.GetService<Neo4jFixture.TestContext>().Driver,
                 Fixture.GetService<N4pperManager>()
                 );
         }
