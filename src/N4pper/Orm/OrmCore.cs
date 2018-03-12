@@ -1,4 +1,5 @@
 ﻿using N4pper.Decorators;
+using N4pper.Orm.Cypher;
 using Neo4j.Driver.V1;
 using OMnG;
 using System;
@@ -25,28 +26,33 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
             
-            string n = OrmCoreHelpers.TempSymbol();
+            Symbol n = Cypr.Symbol();
+            
+            NodeExpressionBuilder<TNode> node = Cypr.Node<TNode>(n);
+            node.WithBody().SetValues(value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]));
+            node.WithBody().Parametrize();
+
+            SetExpressionBodyBuilder<TNode> body = Cypr.Set<TNode>(value.SelectPrimitiveTypesProperties(), n);
+            body.Parametrize();
 
             StringBuilder sb = new StringBuilder();
 
-            Dictionary<string, object> symbolsOverride = null;
-            if(value.HasIdentityKey() && value.IsIdentityKeyNotSet())
+            Symbol uuid = null;
+            if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
-                string uuid = OrmCoreHelpers.TempSymbol();
-                sb.Append($"{StatementHelpers.GlobalIdentityExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), uuid)} ");
-                symbolsOverride = new Dictionary<string, object>() { { Constants.IdentityPropertyName, uuid } };
+                uuid = Cypr.Symbol();
+                sb.Append($"{Cypr.NodeId<TNode>(uuid)} ");
+
+                node.WithBody().SetSymbol(Constants.IdentityPropertyName, uuid);
+                body.SetSymbol(Constants.IdentityPropertyName, uuid);
             }
 
-            sb.Append($"MERGE {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]), n, symbolsOverride)} WITH {n} ");
-            if(symbolsOverride!=null)
-            {
-                foreach (object item in symbolsOverride.Values)
-                {
-                    sb.Append($",{item} ");
-                }
-            }
-            sb.Append($"SET {StatementHelpers.SetExpression(value.SelectPrimitiveTypesProperties(), n, symbolsOverride)} RETURN {n}");
+            body.ScopeProps(n);
 
+            sb.Append($"MERGE {node} WITH {n}");
+            if (uuid != null) sb.Append($", {uuid}");
+            sb.Append($" SET {body} RETURN {n}");
+                        
             return ext.ExecuteQuery<TResult>(sb.ToString(), value).First();
         }
         public static IEnumerable<TResult> AddOrUpdateNodes<TNode, TResult>(this ITransaction ext, IEnumerable<TNode> value)
@@ -70,10 +76,14 @@ namespace N4pper.Orm
             value.ValidateObjectKeyValues();
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
-                        
-            string n = OrmCoreHelpers.TempSymbol();
 
-            return ext.Execute($"MATCH {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]), n)} DELETE {n}", value).Counters.NodesDeleted;
+            Symbol n = Cypr.Symbol();
+
+            NodeExpressionBuilder<TNode> node = Cypr.Node<TNode>(n);
+            node.WithBody().SetValues(value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]));
+            node.WithBody().Parametrize();
+
+            return ext.Execute($"MATCH {node} DELETE {n}", value).Counters.NodesDeleted;
         }
         public static int DeleteNodes<TNode>(this ITransaction ext, IEnumerable<TNode> value) where TNode : class
         {
@@ -107,87 +117,47 @@ namespace N4pper.Orm
                 destination.ValidateObjectKeyValues();
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
-                        
-            string r = OrmCoreHelpers.TempSymbol();
-
-            StringBuilder sb = new StringBuilder();
-
-            Dictionary<string, object> symbolsOverride = null;
-            if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
-            {
-                string uuid = OrmCoreHelpers.TempSymbol();
-                sb.Append($"{StatementHelpers.GlobalIdentityExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), uuid)} ");
-                symbolsOverride = new Dictionary<string, object>() { { Constants.IdentityPropertyName, uuid } };
-            }
-
-            sb.Append("MATCH ");
 
             Dictionary<string, object> parameters = new Dictionary<string, object>();
 
-            string nS = OrmCoreHelpers.TempSymbol();
-            if (source != null)
-            {
-                Dictionary<string, object> k = source.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)]);
-                sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(OrmCoreTypes.OMnGConfiguration), k, nS, new Dictionary<string, object>(), nameof(nS)));
-                foreach (KeyValuePair<string, object> kv in k)
-                {
-                    parameters.Add($"{kv.Key}{nameof(nS)}", kv.Value);
-                }
-            }
-            else
-            {
-                sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(OrmCoreTypes.OMnGConfiguration), new Dictionary<string, object>(), nS));
-            }
-            sb.Append(" MATCH ");
-            string nD = OrmCoreHelpers.TempSymbol();
-            if (destination != null)
-            {
-                Dictionary<string, object> k = destination.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)]);
-                sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(OrmCoreTypes.OMnGConfiguration), k, nD, new Dictionary<string, object>(), nameof(nD)));
-                foreach (KeyValuePair<string, object> kv in k)
-                {
-                    parameters.Add($"{kv.Key}{nameof(nD)}", kv.Value);
-                }
-            }
-            else
-            {
-                sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(OrmCoreTypes.OMnGConfiguration), new Dictionary<string, object>(), nD));
-            }
-            if (source == null || destination == null)
-            {
-                sb.Append(" MATCH ");
-                sb.Append($" ({nS})-");
-                sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r, symbolsOverride, nameof(r)));
-                sb.Append($"->({nD})");
-            }
-            else
-            {
-                sb.Append(" MERGE");
-                sb.Append($" ({nS})-");
+            Symbol nS = Cypr.Symbol();
+            Symbol r = Cypr.Symbol();
+            Symbol nD = Cypr.Symbol();
 
-                sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r, symbolsOverride, nameof(r)));
+            NodeExpressionBuilder<S> nodeS = Cypr.Node<S>(nS);
+            nodeS.WithBody().SetValues(source?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)]));
+            parameters = parameters.MergeWith(nodeS.WithBody().Parametrize(nameof(nS)));
 
-                sb.Append($"->({nD})");
-            }
+            NodeExpressionBuilder<D> nodeD = Cypr.Node<D>(nD);
+            nodeD.WithBody().SetValues(destination?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)]));
+            parameters = parameters.MergeWith(nodeD.WithBody().Parametrize(nameof(nD)));
 
-            sb.Append($" WITH {r} ");
+            RelationshipExpressionBuilder<TRel> rel = Cypr.Rel<TRel>(r);
+            rel.WithBody().SetValues(value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]));
 
-            if (source != null && destination != null)
+            SetExpressionBodyBuilder<TRel> body = Cypr.Set<TRel>(value.SelectPrimitiveTypesProperties(), r);
+            parameters = parameters.MergeWith(body.Parametrize(nameof(r)));
+
+            StringBuilder sb = new StringBuilder();
+
+            Symbol uuid = null;
+            if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
-                if (symbolsOverride != null)
-                {
-                    foreach (object item in symbolsOverride.Values)
-                    {
-                        sb.Append($",{item} ");
-                    }
-                }
-            }
-            sb.Append($" SET {StatementHelpers.SetExpression(value.SelectPrimitiveTypesProperties(), r, symbolsOverride, nameof(r))} RETURN {r}");
+                uuid = Cypr.Symbol();
+                sb.Append($"{Cypr.RelId<TRel>(uuid)} ");
 
-            foreach (KeyValuePair<string, object> kv in value.SelectPrimitiveTypesProperties())
-            {
-                parameters.Add($"{kv.Key}{nameof(r)}", kv.Value);
-            }
+                rel.WithBody().SetSymbol(Constants.IdentityPropertyName, uuid);
+                body.SetSymbol(Constants.IdentityPropertyName, uuid);
+            };
+            rel.WithBody().Parametrize(nameof(r));
+
+            body.ScopeProps(r);
+
+            string clause = (source==null || destination == null)? "MATCH" : "MERGE";
+
+            sb.Append($"MATCH {nodeS} MATCH {nodeD} {clause} ({nS})-{rel}->({nD}) WITH {r}");
+            if (uuid != null) sb.Append($", {uuid}");
+            sb.Append($" SET {body} RETURN {r}");
 
             return ext.ExecuteQuery<TResult>(sb.ToString(), parameters).First();
         }
@@ -219,15 +189,14 @@ namespace N4pper.Orm
             value.ValidateObjectKeyValues();
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
-                        
-            string r = OrmCoreHelpers.TempSymbol();
 
-            StringBuilder sb = new StringBuilder();
-            sb.Append($"MATCH ()-{StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]), r)}->()");
+            Symbol r = Cypr.Symbol();
 
-            sb.Append($" DELETE {r}");
-
-            return ext.Execute(sb.ToString(), value).Counters.RelationshipsDeleted;
+            RelationshipExpressionBuilder<TRel> rel = Cypr.Rel<TRel>(r);
+            rel.WithBody().SetValues(value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TRel)]));
+            rel.WithBody().Parametrize();
+            
+            return ext.Execute($"MATCH ()-{rel}->() DELETE {r}", value).Counters.RelationshipsDeleted;
         }
         public static int DeleteRels<TRel>(this ITransaction ext, IEnumerable<TRel> value)
             where TRel : class
@@ -282,11 +251,15 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            string n = OrmCoreHelpers.TempSymbol();
+            Symbol n = Cypr.Symbol();
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH {StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n)} RETURN {n} ");
+            NodeExpressionBuilder<TNode> node = Cypr.Node<TNode>(n);
+            node.WithBody().SetValues(param);
+            node.WithBody().Parametrize();
+
+            sb.Append($"MATCH {node} RETURN {n}");
 
             return ext.ExecuteQuery<TResult>(sb.ToString(), param).Select(p => p);
         }
@@ -302,19 +275,24 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            string n = OrmCoreHelpers.TempSymbol();
-            string r = OrmCoreHelpers.TempSymbol();
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+            Symbol n = Cypr.Symbol();
+            Symbol r = Cypr.Symbol();
+
+            NodeExpressionBuilder<TNode> node = Cypr.Node<TNode>(n);
+            node.WithBody().SetValues(param);
+            parameters = parameters.MergeWith(node.WithBody().Parametrize(nameof(n)));
+
+            RelationshipExpressionBuilder<TRel> rel = Cypr.Rel<TRel>(r);
+            rel.WithBody().SetValues(relParam);
+            parameters = parameters.MergeWith(rel.WithBody().Parametrize(nameof(r)));
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH ");
-            sb.Append(StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n));
-            sb.Append("-");
-            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), relParam?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
-            sb.Append("->()");
-            sb.Append($" RETURN {n},{r} ");
+            sb.Append($"MATCH {node}-{rel}->() RETURN {n},{r}");
 
-            return ext.ExecuteQuery<TNodeResult, TRelResult>(sb.ToString(), map, param);
+            return ext.ExecuteQuery<TNodeResult, TRelResult>(sb.ToString(), map, parameters);
         }
         
         public static IEnumerable<TNodeResult> QueryForDestinationNode<TNode, TRel, TNodeResult, TRelResult>(this IStatementRunner ext, Func<TNodeResult, TRelResult, TNodeResult> map, object param = null, object relParam = null)
@@ -328,19 +306,24 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            string n = OrmCoreHelpers.TempSymbol();
-            string r = OrmCoreHelpers.TempSymbol();
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+            Symbol n = Cypr.Symbol();
+            Symbol r = Cypr.Symbol();
+
+            NodeExpressionBuilder<TNode> node = Cypr.Node<TNode>(n);
+            node.WithBody().SetValues(param);
+            parameters = parameters.MergeWith(node.WithBody().Parametrize(nameof(n)));
+
+            RelationshipExpressionBuilder<TRel> rel = Cypr.Rel<TRel>(r);
+            rel.WithBody().SetValues(relParam);
+            parameters = parameters.MergeWith(rel.WithBody().Parametrize(nameof(r)));
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH ");
-            sb.Append("()-");
-            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), relParam?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
-            sb.Append("->");
-            sb.Append(StatementHelpers.NodeExpression(typeof(TNode).GetLabels(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), n));
-            sb.Append($" RETURN {n},{r} ");
+            sb.Append($"MATCH ()-{rel}->{node} RETURN {n},{r}");
 
-            return ext.ExecuteQuery<TNodeResult, TRelResult>(sb.ToString(), map, param);
+            return ext.ExecuteQuery<TNodeResult, TRelResult>(sb.ToString(), map, parameters);
         }
         
         public static IEnumerable<TResult> QueryForRel<TRel, TResult>(this IStatementRunner ext, object param = null)
@@ -351,11 +334,15 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            string r = OrmCoreHelpers.TempSymbol();
+            Symbol r = Cypr.Symbol();
+
+            RelationshipExpressionBuilder<TRel> rel = Cypr.Rel<TRel>(r);
+            rel.WithBody().SetValues(param);
+            rel.WithBody().Parametrize();
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH ()-{StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), r)}->() RETURN {r} ");
+            sb.Append($"MATCH ()-{rel}->() RETURN {r} ");
 
             return ext.ExecuteQuery<TResult>(sb.ToString(), param);
         }
@@ -373,21 +360,29 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            string nS = OrmCoreHelpers.TempSymbol();
-            string nD = OrmCoreHelpers.TempSymbol();
-            string r = OrmCoreHelpers.TempSymbol();
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+            Symbol nS = Cypr.Symbol();
+            Symbol nD = Cypr.Symbol();
+            Symbol r = Cypr.Symbol();
+
+            NodeExpressionBuilder<S> nodeS = Cypr.Node<S>(nS);
+            nodeS.WithBody().SetValues(sourceParam);
+            parameters = parameters.MergeWith(nodeS.WithBody().Parametrize(nameof(nS)));
+
+            NodeExpressionBuilder<D> nodeD = Cypr.Node<D>(nD);
+            nodeD.WithBody().SetValues(destinationParam);
+            parameters = parameters.MergeWith(nodeD.WithBody().Parametrize(nameof(nD)));
+
+            RelationshipExpressionBuilder<TRel> rel = Cypr.Rel<TRel>(r);
+            rel.WithBody().SetValues(param);
+            parameters = parameters.MergeWith(rel.WithBody().Parametrize(nameof(r)));
 
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"MATCH ");
-            sb.Append(StatementHelpers.NodeExpression(typeof(S).GetLabels(OrmCoreTypes.OMnGConfiguration), sourceParam?.ToPropDictionary() ?? new Dictionary<string, object>(), nS));
-            sb.Append("-");
-            sb.Append(StatementHelpers.RelationshipExpression(typeof(TRel).GetLabel(OrmCoreTypes.OMnGConfiguration), param?.ToPropDictionary() ?? new Dictionary<string, object>(), r));
-            sb.Append("->");
-            sb.Append(StatementHelpers.NodeExpression(typeof(D).GetLabels(OrmCoreTypes.OMnGConfiguration), destinationParam?.ToPropDictionary() ?? new Dictionary<string, object>(), nD));
-            sb.Append($" RETURN {r},{nS},{nD} ");
+            sb.Append($"MATCH {nodeS}-{rel}->{nodeD} RETURN {r},{nS},{nD}");
 
-            return ext.ExecuteQuery<TResult, SResult, DResult>(sb.ToString(), map, param);
+            return ext.ExecuteQuery<TResult, SResult, DResult>(sb.ToString(), map, parameters);
         }
 
         #endregion

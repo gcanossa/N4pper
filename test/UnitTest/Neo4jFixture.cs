@@ -21,17 +21,17 @@ namespace UnitTest
         protected override void ConfigureServices(ServiceCollection sc)
         {
             sc.AddSingleton<IConfigurationRoot>(Configuration);
-            sc.AddSingleton<N4pperOptions>(new N4pperOptions());
-            sc.AddSingleton<N4pperManager>();
+            sc.AddN4pper()
+                .AddGraphContext<TestContext>(Configuration.GetConnectionString("DefaultConnection"));
 
             sc.AddTransient<IQueryTracer, QueryTraceLogger>();
 
             sc.AddTransient<Neo4jServer_DriverBuilder>(provider=> new Neo4jServer_DriverBuilder(Configuration));
-            sc.AddTransient<TestContext>();
-            sc.AddTransient<DriverProvider<TestContext>, Neo4jServer_DriverProvider>();
+            //sc.AddTransient<TestContext>();
+            //sc.AddTransient<DriverProvider<TestContext>, Neo4jServer_DriverProvider>();
             //sc.AddTransient<IDriver>(s => GraphDatabase.Driver(new Uri(Configuration.GetConnectionString("DefaultConnection")), AuthTokens.None));
-
-            sc.AddLogging(builder => builder.AddDebug());
+            
+            sc.AddLogging(builder => builder.AddDebug().AddConsole());
         }
 
         public class TestContext : GraphContext
@@ -54,21 +54,21 @@ namespace UnitTest
             }
         }
 
-        public class Neo4jServer_DriverProvider : DriverProvider<TestContext>
-        {
-            private IConfigurationRoot _conf;
-            public Neo4jServer_DriverProvider(IConfigurationRoot conf, N4pperManager manager)
-                :base(manager)
-            {
-                _conf = conf;
-            }
+        //public class Neo4jServer_DriverProvider : DriverProvider<TestContext>
+        //{
+        //    private IConfigurationRoot _conf;
+        //    public Neo4jServer_DriverProvider(IConfigurationRoot conf, N4pperManager manager)
+        //        :base(manager)
+        //    {
+        //        _conf = conf;
+        //    }
 
-            public override string Uri => _conf.GetConnectionString("DefaultConnection");
+        //    public override string Uri => _conf.GetConnectionString("DefaultConnection");
 
-            public override IAuthToken AuthToken => AuthTokens.None;
+        //    public override IAuthToken AuthToken => AuthTokens.None;
 
-            public override Config Config => new Config();
-        }
+        //    public override Config Config => new Config();
+        //}
         public class Neo4jServer_DriverBuilder : DriverBuilder
         {
             private IConfigurationRoot _conf;

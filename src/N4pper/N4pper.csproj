@@ -13,11 +13,14 @@
 
   <ItemGroup>
     <PackageReference Include="Neo4j.Driver" Version="1.5.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
     <PackageReference Include="OMnG" Version="0.1.8" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Orm\Interceptors\" />
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
+      <HintPath>..\..\..\..\..\Program Files\dotnet\sdk\NuGetFallbackFolder\microsoft.extensions.dependencyinjection.abstractions\2.0.0\lib\netstandard2.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

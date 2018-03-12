@@ -12,7 +12,7 @@ namespace N4pper
 {
     public static class IStatementRunnerExtensions
     {
-        //TODO: add async support, cause of Neo4J.Driver ConsumingEnumerables has to be used.
+        //TODO: add async support. Because of Neo4J.Driver, ConsumingEnumerables has to be used.
         #region helpers
         
         private static T Map<T>(IEntity entity) where T : class, new()

@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using N4pper.Diagnostic;
+using N4pper.Orm;
 using Neo4j.Driver.V1;
 
 namespace N4pper.Decorators
 {
     public class GraphManagedSession : SessionDecorator, IGraphManagedStatementRunner
     {
+        public GraphContext Context { get; internal set; }
         public N4pperManager Manager { get; protected set; }
         public GraphManagedSession(ISession session, N4pperManager manager) : base(session)
         {
@@ -17,47 +19,47 @@ namespace N4pper.Decorators
 
         public override ITransaction BeginTransaction()
         {
-            return new GraphManagedTransaction(base.BeginTransaction(), Manager);
+            return new GraphManagedTransaction(base.BeginTransaction(), Manager) { Context = Context };
         }
         public override ITransaction BeginTransaction(string bookmark)
         {
-            return new GraphManagedTransaction(base.BeginTransaction(bookmark), Manager);
+            return new GraphManagedTransaction(base.BeginTransaction(bookmark), Manager) { Context = Context };
         }
         public override Task<ITransaction> BeginTransactionAsync()
         {
-            return Task.Run<ITransaction>(async () => new GraphManagedTransaction(await base.BeginTransactionAsync(), Manager));
+            return Task.Run<ITransaction>(async () => new GraphManagedTransaction(await base.BeginTransactionAsync(), Manager) { Context = Context });
         }
         public override void ReadTransaction(Action<ITransaction> work)
         {
-            base.ReadTransaction(p=>work(new GraphManagedTransaction(p, Manager)));
+            base.ReadTransaction(p=>work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override T ReadTransaction<T>(Func<ITransaction, T> work)
         {
-            return base.ReadTransaction(p => work(new GraphManagedTransaction(p, Manager)));
+            return base.ReadTransaction(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override Task ReadTransactionAsync(Func<ITransaction, Task> work)
         {
-            return base.ReadTransactionAsync(p => work(new GraphManagedTransaction(p, Manager)));
+            return base.ReadTransactionAsync(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override Task<T> ReadTransactionAsync<T>(Func<ITransaction, Task<T>> work)
         {
-            return base.ReadTransactionAsync(p => work(new GraphManagedTransaction(p, Manager)));
+            return base.ReadTransactionAsync(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override void WriteTransaction(Action<ITransaction> work)
         {
-            base.WriteTransaction(p => work(new GraphManagedTransaction(p, Manager)));
+            base.WriteTransaction(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override T WriteTransaction<T>(Func<ITransaction, T> work)
         {
-            return base.WriteTransaction(p => work(new GraphManagedTransaction(p, Manager)));
+            return base.WriteTransaction(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override Task WriteTransactionAsync(Func<ITransaction, Task> work)
         {
-            return base.WriteTransactionAsync(p => work(new GraphManagedTransaction(p, Manager)));
+            return base.WriteTransactionAsync(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
         public override Task<T> WriteTransactionAsync<T>(Func<ITransaction, Task<T>> work)
         {
-            return base.WriteTransactionAsync(p => work(new GraphManagedTransaction(p, Manager)));
+            return base.WriteTransactionAsync(p => work(new GraphManagedTransaction(p, Manager) { Context = Context }));
         }
 
 

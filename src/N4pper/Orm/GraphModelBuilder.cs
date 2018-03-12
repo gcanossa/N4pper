@@ -5,8 +5,12 @@ using System.Text;
 
 namespace N4pper.Orm
 {
-    public class GraphModelBuilder
+    public sealed class GraphModelBuilder
     {
+        internal GraphModelBuilder()
+        {
+
+        }
         public GraphModelBuilder Entity<T>() where T : class
         {
             OrmCoreTypes.Entity<T>();

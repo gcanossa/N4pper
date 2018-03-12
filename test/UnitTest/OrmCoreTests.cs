@@ -7,6 +7,7 @@ using Xunit;
 using AsIKnow.XUnitExtensions;
 using N4pper.Orm;
 using N4pper.Diagnostic;
+using N4pper.Orm.Cypher;
 
 namespace UnitTest
 {
@@ -116,7 +117,7 @@ namespace UnitTest
         {
             (IDriver driver, N4pperManager mgr) = SetUp();
             
-            using (ISession session = driver.Session().WithGraphManager(mgr))
+            using (ISession session = driver.Session())
             {
                 int count = session.Run($"MATCH (p) WHERE NOT p:{StatementHelpers.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
@@ -145,7 +146,7 @@ namespace UnitTest
         {
             (IDriver driver, N4pperManager mgr) = SetUp();
             
-            using (ISession session = driver.Session().WithGraphManager(mgr))
+            using (ISession session = driver.Session())
             {
                 int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
@@ -179,7 +180,7 @@ namespace UnitTest
         {
             (IDriver driver, N4pperManager mgr) = SetUp();
 
-            using (ISession session = driver.Session().WithGraphManager(mgr))
+            using (ISession session = driver.Session())
             {
                 int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 

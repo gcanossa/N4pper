@@ -1,6 +1,8 @@
-﻿using Neo4j.Driver.V1;
+﻿using N4pper.Decorators;
+using Neo4j.Driver.V1;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace N4pper.Orm
@@ -11,9 +13,10 @@ namespace N4pper.Orm
         public GraphContext(DriverProvider provider)
         {
             Driver = provider.GetDriver();
+            ((GraphManagedDriver)Driver).Context = this;
             OnModelCreating(new GraphModelBuilder());
         }
-
+        
         protected virtual void OnModelCreating(GraphModelBuilder builder)
         {
 

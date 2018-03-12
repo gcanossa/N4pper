@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using N4pper.Diagnostic;
+using N4pper.Orm;
 using Neo4j.Driver.V1;
 
 namespace N4pper.Decorators
 {
     public class GraphManagedTransaction : TransactionDecorator, IGraphManagedStatementRunner
     {
+        public GraphContext Context { get; internal set; }
         public N4pperManager Manager { get; protected set; }
 
         public GraphManagedTransaction(ITransaction transaction, N4pperManager manager) : base(transaction)
