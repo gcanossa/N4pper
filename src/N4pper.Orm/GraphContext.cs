@@ -13,7 +13,7 @@ namespace N4pper.Orm
         public GraphContext(DriverProvider provider)
         {
             Driver = provider.GetDriver();
-            ((GraphManagedDriver)Driver).Context = this;
+            ((OrmManagedDriver)Driver).Context = this;
             OnModelCreating(new GraphModelBuilder());
         }
         

@@ -6,13 +6,13 @@ using N4pper.Decorators;
 using N4pper.Diagnostic;
 using N4pper.Orm;
 
-namespace N4pper
+namespace N4pper.Orm
 {
     public static class ISessionExtensions
     {
         public static ISession WithGraphManager(this ISession ext, N4pperManager manager, GraphContext context)
         {
-            return new GraphManagedSession(ext, manager) { Context = context };
+            return new OrmManagedSession(ext, manager) { Context = context};
         }
     }
 }

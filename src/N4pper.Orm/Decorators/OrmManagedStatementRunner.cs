@@ -8,11 +8,11 @@ using Neo4j.Driver.V1;
 
 namespace N4pper.Decorators
 {
-    public class GraphManagedStatementRunner : StatementRunnerDecorator, IGraphManagedStatementRunner
+    public class OrmManagedStatementRunner : StatementRunnerDecorator, IOrmStatementRunner
     {
         public GraphContext Context { get; internal set; }
         public N4pperManager Manager { get; protected set; }
-        public GraphManagedStatementRunner(IStatementRunner runner, N4pperManager manager) : base(runner)
+        public OrmManagedStatementRunner(IStatementRunner runner, N4pperManager manager) : base(runner)
         {
             Manager = manager;
         }

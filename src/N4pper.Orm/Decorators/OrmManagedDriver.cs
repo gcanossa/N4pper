@@ -6,11 +6,11 @@ using System.Text;
 
 namespace N4pper.Decorators
 {
-    public class GraphManagedDriver : DriverDecorator, IGraphManagedStatementRunner
+    public class OrmManagedDriver : DriverDecorator, IOrmStatementRunner
     {
         public GraphContext Context { get; internal set; }
         public N4pperManager Manager { get; protected set; }
-        public GraphManagedDriver(IDriver driver, N4pperManager manager) : base(driver)
+        public OrmManagedDriver(IDriver driver, N4pperManager manager) : base(driver)
         {
             Manager = manager;
         }

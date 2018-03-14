@@ -8,12 +8,12 @@ using Neo4j.Driver.V1;
 
 namespace N4pper.Decorators
 {
-    public class GraphManagedTransaction : TransactionDecorator, IGraphManagedStatementRunner
+    public class OrmManagedTransaction : TransactionDecorator, IOrmStatementRunner
     {
         public GraphContext Context { get; internal set; }
         public N4pperManager Manager { get; protected set; }
 
-        public GraphManagedTransaction(ITransaction transaction, N4pperManager manager) : base(transaction)
+        public OrmManagedTransaction(ITransaction transaction, N4pperManager manager) : base(transaction)
         {
             Manager = manager;
         }

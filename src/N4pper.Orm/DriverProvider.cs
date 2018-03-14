@@ -21,7 +21,7 @@ namespace N4pper.Orm
 
         public virtual IDriver GetDriver()
         {
-            return new GraphManagedDriver(GraphDatabase.Driver(Uri, AuthToken, Config), Manager);
+            return new OrmManagedDriver(GraphDatabase.Driver(Uri, AuthToken, Config), Manager);
         }
     }
 
