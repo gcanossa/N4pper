@@ -1,22 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using q = System.Linq.Queryable;
 
 namespace N4pper.Queryable
 {
     internal class WhereQueryTranslator : QueryPartTranslatorBase
     {
-        protected override bool MatchCall(MethodCallExpression expression)
+        internal WhereQueryTranslator(Type typeResult) : base(typeResult)
         {
-            return expression.Method.Name == "Where";
         }
-
+        
         protected override Expression VisitMethodCall(MethodCallExpression m)
         {
             if (m.Method.DeclaringType == typeof(System.Linq.Queryable))
             {
-                if (m.Method.Name == "Where")
+                if (m.Method.Name == nameof(q.Where) && m.Arguments[1].Type.GetGenericArguments().Length == 1)
                 {
                     _builder.Append(" WITH * WHERE (");
 
@@ -26,6 +27,10 @@ namespace N4pper.Queryable
 
                     _builder.Append(") ");
                 }
+                else if (m.Method.Name == nameof(q.Distinct) && m.Arguments.Count==1)
+                {
+                    _builder.Append(" WITH DISTINCT *");
+                }
                 else
                     throw new NotSupportedException($"The method '{m.Method.Name}' is not supported");
 
@@ -33,7 +38,7 @@ namespace N4pper.Queryable
             }
             else if (m.Method.DeclaringType == typeof(String))
             {
-                if (m.Method.Name == "StartsWith")
+                if (m.Method.Name == nameof(string.StartsWith))
                 {
                     Visit(m.Object);
 
@@ -41,7 +46,7 @@ namespace N4pper.Queryable
 
                     Visit(m.Arguments);
                 }
-                else if (m.Method.Name == "EndsWith")
+                else if (m.Method.Name == nameof(string.EndsWith))
                 {
                     Visit(m.Object);
 
@@ -49,7 +54,7 @@ namespace N4pper.Queryable
 
                     Visit(m.Arguments);
                 }
-                else if (m.Method.Name == "Contains")
+                else if (m.Method.Name == nameof(string.Contains))
                 {
                     Visit(m.Object);
 

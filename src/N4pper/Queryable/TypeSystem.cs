@@ -6,11 +6,20 @@ namespace N4pper.Queryable
 {
     internal static class TypeSystem
     {
+        internal static bool IsNumeric(Type type)
+        {
+            return type.IsPrimitive && type != typeof(char) && type != typeof(bool);
+        }
         internal static Type GetElementType(Type seqType)
         {
             Type ienum = FindIEnumerable(seqType);
             if (ienum == null) return seqType;
             return ienum.GetGenericArguments()[0];
+        }
+        internal static bool IsEnumerable(Type type)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(type));
+            return type.Name == "IEnumerable`1";
         }
 
         private static Type FindIEnumerable(Type seqType)

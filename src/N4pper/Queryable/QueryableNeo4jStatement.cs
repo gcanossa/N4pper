@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Neo4j.Driver.V1;
+using OMnG;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -8,13 +10,21 @@ namespace N4pper.Queryable
 {
     public class QueryableNeo4jStatement<TData> : IOrderedQueryable<TData>
     {
+        public IStatementRunner Runner { get; set; }
+        public Statement Statement { get; set; }
+        public Func<IRecord, IDictionary<string, object>> Mapper { get; set; }
+
         #region Constructors
         /// <summary> 
         /// This constructor is called by the client to create the data source. 
         /// </summary> 
-        public QueryableNeo4jStatement()
+        public QueryableNeo4jStatement(IStatementRunner runner, Statement statement, Func<IRecord, IDictionary<string, object>> mapper)
         {
-            Provider = new CypherQueryProvider();
+            Runner = runner ?? throw new ArgumentNullException(nameof(runner));
+            Statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            Mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+
+            Provider = new CypherQueryProvider(runner, statement, mapper);
             Expression = Expression.Constant(this);
         }
 
@@ -22,7 +32,8 @@ namespace N4pper.Queryable
         /// This constructor is called by Provider.CreateQuery(). 
         /// </summary> 
         /// <param name="expression"></param>
-        public QueryableNeo4jStatement(CypherQueryProvider provider, Expression expression)
+        public QueryableNeo4jStatement(IStatementRunner runner, Statement statement, Func<IRecord, IDictionary<string, object>> mapper, CypherQueryProvider provider, Expression expression)
+            :this(runner, statement, mapper)
         {
             provider = provider ?? throw new ArgumentNullException(nameof(provider));
             expression = expression ?? throw new ArgumentNullException(nameof(expression));

@@ -8,52 +8,19 @@ namespace N4pper.Queryable
 {
     internal abstract class QueryPartTranslatorBase : ExpressionVisitor
     {
-        protected StringBuilder _builder;
-        protected List<MethodCallExpression> _callChain = new List<MethodCallExpression>();
-        protected Type _typeResult;
+        protected StringBuilder _builder = new StringBuilder();
+        public Type TypeResult { get; set; }
 
-        internal QueryPartTranslatorBase()
+        public string Statement => _builder.ToString();
+
+        internal QueryPartTranslatorBase(Type typeResult)
         {
+            TypeResult = typeResult;
         }
         
-        protected void FilterCallChain(List<MethodCallExpression> callChain)
+        internal void Accept(Expression expression)
         {
-            foreach (MethodCallExpression item in callChain.ToArray())
-            {
-                if (MatchCall(item))
-                {
-                    _callChain.Add(item);
-                    callChain.Remove(item);
-                }
-            }
-        }
-
-        protected abstract bool MatchCall(MethodCallExpression m);
-        protected virtual void ValidateChain()
-        {
-
-        }
-        protected virtual void SortChain()
-        {
-
-        }
-
-        internal string Translate(List<MethodCallExpression> callChain, Type typeResult)
-        {
-            _builder = new StringBuilder();
-
-            _typeResult = typeResult;
-
-            FilterCallChain(callChain);
-            SortChain();
-            ValidateChain();
-
-            foreach (MethodCallExpression item in _callChain)
-            {
-                Visit(item);
-            }
-
-            return _builder.ToString();
+            Visit(expression);
         }
 
         protected Expression StripQuotes(Expression e)
@@ -156,12 +123,16 @@ namespace N4pper.Queryable
 
                         break;
                     case TypeCode.String:
-                    case TypeCode.DateTime:
                         _builder.Append("'");
 
                         _builder.Append(c.Value);
 
                         _builder.Append("'");
+
+                        break;
+                    case TypeCode.DateTime:
+                        DateTimeOffset d = (DateTime)c.Value;
+                        _builder.Append(d.ToUnixTimeMilliseconds());
 
                         break;
                     case TypeCode.Object:

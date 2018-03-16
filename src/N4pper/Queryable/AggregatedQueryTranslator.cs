@@ -3,104 +3,88 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using q = System.Linq.Queryable;
 
 namespace N4pper.Queryable
 {
     internal class AggregatedQueryTranslator : QueryPartTranslatorBase
     {
-        private bool _distinct;
-        internal AggregatedQueryTranslator(bool distinct)
+        internal AggregatedQueryTranslator(Type typeResult) : base(typeResult)
         {
-            _distinct = distinct;
-        }
-        protected override void ValidateChain()
-        {
-            if (_callChain.Count() > 1)
-                throw new ArgumentOutOfRangeException("expression", "Only one terminal call is allowed");
-        }
-        protected override bool MatchCall(MethodCallExpression m)
-        {
-            return true;
-        }
-        private bool IsNumeric(Type type)
-        {
-            return type.IsPrimitive && type != typeof(char) && type != typeof(bool);
         }
 
         protected override Expression VisitMethodCall(MethodCallExpression m)
         {
             if (m.Method.DeclaringType == typeof(System.Linq.Queryable))
             {
-                if (m.Method.Name == "Count" && m.Arguments.Count == 1)
+                if (m.Method.Name == nameof(q.Count))
                 {
-                    _builder.Append(" RETURN ");
-                    if(_distinct)
-                        _builder.Append("DISTINCT ");
-                    _builder.Append("count(*) ");
+                    _builder.Append(" WITH *");
+                    if (m.Arguments.Count == 2)
+                    {
+                        _builder.Append(" WHERE (");
+                        LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
+
+                        Visit(lambda.Body);
+                        _builder.Append(")");
+                    }
+                    _builder.Append(" RETURN count(*)");
                 }
-                else if (m.Method.Name == "Average")
+                else if (m.Method.Name == nameof(q.Average))
                 {
                     LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
 
-                    _builder.Append(" RETURN ");
-                    if (_distinct)
-                        _builder.Append("DISTINCT ");
-                    _builder.Append("avg(");
+                    _builder.Append(" RETURN avg(");
 
-                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && IsNumeric(((MemberExpression)lambda.Body).Type))
+                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && TypeSystem.IsNumeric(((MemberExpression)lambda.Body).Type))
                         Visit(lambda.Body);
                     else
                         throw new ArgumentException("Lambada must be a numeric memmeber accessor", nameof(m));
 
-                    _builder.Append(") ");
+                    _builder.Append("), ");
+                    Visit(lambda.Parameters[0]);
                 }
                 else if (m.Method.Name == "Sum")
                 {
                     LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
 
-                    _builder.Append(" RETURN ");
-                    if (_distinct)
-                        _builder.Append("DISTINCT ");
-                    _builder.Append("sum(");
+                    _builder.Append(" RETURN sum(");
 
-                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && IsNumeric(((MemberExpression)lambda.Body).Type))
+                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && TypeSystem.IsNumeric(((MemberExpression)lambda.Body).Type))
                         Visit(lambda.Body);
                     else
                         throw new ArgumentException("Lambada must be a numeric memmeber accessor", nameof(m));
 
-                    _builder.Append(") ");
+                    _builder.Append("), ");
+                    Visit(lambda.Parameters[0]);
                 }
                 else if (m.Method.Name == "Min")
                 {
                     LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
 
-                    _builder.Append(" RETURN ");
-                    if (_distinct)
-                        _builder.Append("DISTINCT ");
-                    _builder.Append("min(");
+                    _builder.Append(" RETURN min(");
 
                     if (lambda.Body.NodeType == ExpressionType.MemberAccess)
                         Visit(lambda.Body);
                     else
                         throw new ArgumentException("Lambada must be a numeric memmeber accessor", nameof(m));
 
-                    _builder.Append(") ");
+                    _builder.Append("), ");
+                    Visit(lambda.Parameters[0]);
                 }
                 else if (m.Method.Name == "Max")
                 {
                     LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
 
-                    _builder.Append(" RETURN ");
-                    if (_distinct)
-                        _builder.Append("DISTINCT ");
-                    _builder.Append("max(");
+                    _builder.Append(" RETURN max(");
 
                     if (lambda.Body.NodeType == ExpressionType.MemberAccess)
                         Visit(lambda.Body);
                     else
                         throw new ArgumentException("Lambada must be a numeric memmeber accessor", nameof(m));
 
-                    _builder.Append(") ");
+                    _builder.Append("), ");
+                    Visit(lambda.Parameters[0]);
                 }
                 else
                     throw new NotSupportedException($"The method '{m.Method.Name}' is not supported");
