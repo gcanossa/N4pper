@@ -9,12 +9,10 @@ namespace N4pper.Queryable
     internal class ParameterNameRewriter : ExpressionVisitor
     {
         protected string Name { get; set; }
-        protected Type TypeResult { get; set; }
 
-        public ParameterNameRewriter(string name, Type typeResult)
+        public ParameterNameRewriter(string name)
         {
             Name = string.IsNullOrEmpty(name) ? "p" : name;
-            TypeResult = typeResult ?? throw new ArgumentNullException(nameof(typeResult));
         }
 
         protected override Expression VisitParameter(ParameterExpression node)

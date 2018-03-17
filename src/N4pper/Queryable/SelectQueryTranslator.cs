@@ -20,26 +20,24 @@ namespace N4pper.Queryable
         {
             if (lambda.Body.NodeType == ExpressionType.MemberAccess)
             {
+                ParameterExpression par = lambda.Parameters[0];
                 MemberExpression tmp = lambda.Body as MemberExpression;
 
-                if (TypeResult.GetProperty(tmp.Member.Name) != null)
+                if (par.Type.GetProperty(tmp.Member.Name) != null)
                 {
-                    TypeResult = TypeResult.GetProperty(tmp.Member.Name).PropertyType;
-
-                    VisitMemberForSelect(tmp);
+                    Visit(tmp);
 
                     return true;
                 }
             }
             else if (lambda.Body.NodeType == ExpressionType.New)
             {
+                ParameterExpression par = lambda.Parameters[0];
                 NewExpression tmp = lambda.Body as NewExpression;
 
-                if (tmp.Type.GetProperties().All(p => TypeResult.GetProperty(p.Name) != null))
+                if (tmp.Type.GetProperties().All(p => par.Type.GetProperty(p.Name) != null))
                 {
-                    TypeResult = tmp.Type;
-
-                    VisitNewForSelect(tmp);
+                    base.Visit(tmp);
 
                     return true;
                 }
@@ -47,19 +45,24 @@ namespace N4pper.Queryable
 
             return false;
         }
-        
-        protected Expression VisitNewForSelect(NewExpression node)
+
+        protected override Expression VisitNew(NewExpression node)
         {
-            foreach (Expression item in node.Arguments)
+            for (int i=0;i<node.Arguments.Count; i++)
             {
-                VisitMemberForSelect(item as MemberExpression);
+                if (node.Arguments[i].NodeType == ExpressionType.Constant)
+                {
+                    _builder.Append(node.Members[i].Name);
+                    _builder.Append(":");
+                }
+                Visit(node.Arguments[i]);
                 _builder.Append(",");
             }
             _builder.Remove(_builder.Length - 1, 1);
 
             return node;
         }
-        protected Expression VisitMemberForSelect(MemberExpression m)
+        protected override Expression VisitMember(MemberExpression m)
         {
             if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
             {
@@ -79,14 +82,14 @@ namespace N4pper.Queryable
         {
             if (m.Method.DeclaringType == typeof(System.Linq.Queryable))
             {
-                if (m.Method.Name == nameof(q.Select) && m.Arguments[1].Type.GetGenericArguments().Length==1)
+                if (m.Method.Name == nameof(q.Select) && m.Arguments[1].Type.GetGenericArguments()[0].GetGenericArguments().Length==2)
                 {
                     LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
 
                     _builder.Append(" WITH {");
 
                     if (!HandleVisitSelectBody(lambda))
-                        throw new ArgumentOutOfRangeException(nameof(m), $"The Select method can only be used to narrow the type '{TypeResult.FullName}'");
+                        throw new ArgumentOutOfRangeException(nameof(m), $"The Select method can only be used to narrow the type");
 
                     _builder.Append("} AS ");
                     Visit(lambda.Parameters[0]);

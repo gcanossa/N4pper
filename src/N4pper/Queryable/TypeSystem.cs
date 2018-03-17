@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OMnG;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,10 +7,6 @@ namespace N4pper.Queryable
 {
     internal static class TypeSystem
     {
-        internal static bool IsNumeric(Type type)
-        {
-            return type.IsPrimitive && type != typeof(char) && type != typeof(bool);
-        }
         internal static Type GetElementType(Type seqType)
         {
             Type ienum = FindIEnumerable(seqType);
@@ -20,6 +17,12 @@ namespace N4pper.Queryable
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
             return type.Name == "IEnumerable`1";
+        }
+
+        internal static System.Collections.IList GetListOf(Type type)
+        {
+            Type lst = typeof(List<>).MakeGenericType(type);
+            return (System.Collections.IList)Activator.CreateInstance(lst);
         }
 
         private static Type FindIEnumerable(Type seqType)

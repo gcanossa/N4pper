@@ -1,4 +1,5 @@
-﻿using N4pper.Queryable;
+﻿using N4pper;
+using N4pper.Queryable;
 using System;
 using System.Linq;
 using System.Linq.Expressions;
@@ -46,45 +47,44 @@ namespace UnitTest
 
             using (ISession session = driver.Session())
             {
-                QueryableNeo4jStatement<Child> query = new QueryableNeo4jStatement<Child>(
-                    session, 
-                    new Statement(
-                        "MATCH (q:Child:Person)-[:Of]->(x:Parent:Person) RETURN q,x",
-                        new Dictionary<string, object>() { { "Id", "3" } }
-                        ),
-                    r=> {
-                        return ((Dictionary<string, object>)r.Values[r.Keys[0]]);
-                    });
 
+                var query = session.ExecuteQuery<IEnumerable<Child>>(
+                    "MATCH (q:`UnitTest.QueryableTests+Child`)-[:Of]->(x:`UnitTest.QueryableTests+Parent`) RETURN collect(q) as q,collect(x) as x",
+                    new Dictionary<string, object>() { { "Id", "3" } });
+                
                 DateTime date = DateTime.Now - TimeSpan.FromDays(1);
 
                 var test =
-                    query.Select(p => new { p.Id, p.Name });
+                    query.ToList();//.Select((p, i) => new { p.Id }).ToList();
+                    //.Select(p=> new { p.Id, p.Name})
+                    //.Select(p => new { p.Id })
+                    //.Select((p, i)=> new { p.Id })
+                    //.Select(p => p.Id).First(p=>p==2);
                 
-                Assert.Equal(1,test.Count());
-                Assert.Equal(1, test.ToList().Count());
+                //Assert.Equal(1,test.Count());
+                //Assert.Equal(1, test.ToList().Count());
 
-                var test1 =
-                    query
-                    .Where(p => p.Birthday > date && p.Deathday == null)
-                    .Where(p => p.Id >= 1)
-                    .Where(p => p.Name.StartsWith("lui"))
-                    .Where(q => q.Name.EndsWith("jo")).OrderBy(p => p.Id)
-                    .Where(p => p.Name.Contains("xy")).OrderByDescending(p => p.Id).ThenBy(p => p.Name).ThenByDescending(p => p.Id)
-                    .Take(3).Take(2).Skip(2).Skip(1)
-                    .Select(p => new { p.Id, p.Name })
-                    .Distinct().Count(p => p.Id > 0);
+                //var test1 =
+                //    query
+                //    .Where(p => p.Birthday > date && p.Deathday == null)
+                //    .Where(p => p.Id >= 1)
+                //    .Where(p => p.Name.StartsWith("lui"))
+                //    .Where(q => q.Name.EndsWith("jo")).OrderBy(p => p.Id)
+                //    .Where(p => p.Name.Contains("xy")).OrderByDescending(p => p.Id).ThenBy(p => p.Name).ThenByDescending(p => p.Id)
+                //    .Take(3).Take(2).Skip(2).Skip(1)
+                //    .Select(p => new { p.Id, p.Name })
+                //    .Distinct().Count(p => p.Id > 0);
 
-                //test.ToList();
+                ////test.ToList();
 
-                var test2 =
-                    query
-                    .Where(p => p.Birthday > date && p.Deathday == null)
-                    .Where(p => p.Id >= 1)
-                    .Where(p => p.Name.StartsWith("lui"))
-                    .Where(p => p.Name.EndsWith("jo"))
-                    .Where(p => p.Name.Contains("xy"))
-                    .Distinct().First();
+                //var test2 =
+                //    query
+                //    .Where(p => p.Birthday > date && p.Deathday == null)
+                //    .Where(p => p.Id >= 1)
+                //    .Where(p => p.Name.StartsWith("lui"))
+                //    .Where(p => p.Name.EndsWith("jo"))
+                //    .Where(p => p.Name.Contains("xy"))
+                //    .Distinct().First();
             }
         }
     }

@@ -17,7 +17,7 @@ namespace N4pper.Queryable
         {
             if (m.Method.DeclaringType == typeof(System.Linq.Queryable))
             {
-                if (m.Method.Name == nameof(q.Where) && m.Arguments[1].Type.GetGenericArguments().Length == 1)
+                if (m.Method.Name == nameof(q.Where) && m.Arguments[1].Type.GetGenericArguments()[0].GetGenericArguments().Length == 2)
                 {
                     _builder.Append(" WITH * WHERE (");
 

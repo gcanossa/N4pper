@@ -22,19 +22,30 @@ namespace N4pper.Queryable
 
         internal Type GetExpressionsTypeResult(Expression expression)
         {
-            Type typeResult = TypeSystem.GetElementType(expression.Type);
+            List<MethodCallExpression> callChain = new List<MethodCallExpression>();
 
             while (expression is MethodCallExpression &&
                 ((MethodCallExpression)expression).Method.DeclaringType == typeof(System.Linq.Queryable))
             {
-                typeResult = TypeSystem.GetElementType(expression.Type);
+                callChain.Add((MethodCallExpression)expression);
                 expression = ((MethodCallExpression)expression).Arguments[0];
             }
 
-            return typeResult;
+            callChain.Reverse();
+
+            MethodCallExpression last = callChain.FirstOrDefault(p => !IsManageable(p));
+            
+            if (last != null)
+            {
+                return TypeSystem.GetElementType(last.Arguments[0].Type);
+            }
+            else
+            {
+                return TypeSystem.GetElementType(expression.Type);
+            }
         }
 
-        internal List<MethodCallExpression> GetExpressionsCallChain(Expression expression)
+        internal (List<MethodCallExpression>, int?) GetExpressionsCallChain(Expression expression)
         {
             List<MethodCallExpression>  callChain = new List<MethodCallExpression>();
 
@@ -47,7 +58,44 @@ namespace N4pper.Queryable
 
             callChain.Reverse();
 
-            return callChain;
+            MethodCallExpression last = callChain.FirstOrDefault(p=>!IsManageable(p));
+
+            int? countFromBegin = last == null ? (int?)null : callChain.Count - callChain.IndexOf(last);
+
+            if (last!=null)
+                callChain = callChain.GetRange(0, callChain.IndexOf(last));
+
+            return (callChain, countFromBegin);
+        }
+
+        internal bool IsManageable(MethodCallExpression expr)
+        {
+            switch(expr.Method.Name)
+            {
+                case nameof(q.Where):
+                    return expr.Arguments[1].Type.GetGenericArguments()[0].GetGenericArguments().Length == 1;
+                case nameof(q.Distinct):
+                    return expr.Arguments.Count == 1;
+                case nameof(q.Select):
+                    return expr.Arguments[1].Type.GetGenericArguments()[0].GetGenericArguments().Length == 2;
+                case nameof(q.First):
+                case nameof(q.FirstOrDefault):
+                    return true;
+                case nameof(q.OrderBy):
+                case nameof(q.ThenBy):
+                case nameof(q.OrderByDescending):
+                case nameof(q.ThenByDescending):
+                case nameof(q.Skip):
+                case nameof(q.Take):
+                case nameof(q.Count):
+                case nameof(q.Average):
+                case nameof(q.Sum):
+                case nameof(q.Min):
+                case nameof(q.Max):
+                    return true;
+                default:
+                    return false;
+            }
         }
         
         private void VisitWhereStatements(List<MethodCallExpression> callChain, Type typeResult)
@@ -164,15 +212,16 @@ namespace N4pper.Queryable
             }
             return null;
         }
-        internal string Translate(Expression expression, out MethodCallExpression terminalExpr, string paramNameOverride, IEnumerable<string> otherVariables)
+        internal string Translate(Expression expression, out MethodCallExpression terminalExpr, out int? countFromBegin, out Type typeResult, string paramNameOverride, IEnumerable<string> otherVariables)
         {
             otherVariables = otherVariables ?? new string[0];
-            Type typeResult = GetExpressionsTypeResult(expression);
+            typeResult = GetExpressionsTypeResult(expression);
 
-            ParameterNameRewriter pr = new ParameterNameRewriter(paramNameOverride, typeResult);
+            ParameterNameRewriter pr = new ParameterNameRewriter(paramNameOverride);
             expression = pr.Visit(expression);
 
-            List<MethodCallExpression> callChain = GetExpressionsCallChain(expression);
+            List<MethodCallExpression> callChain;
+            (callChain, countFromBegin) = GetExpressionsCallChain(expression);
 
             StringBuilder sb = new StringBuilder();
 

@@ -12,13 +12,13 @@ namespace N4pper.Queryable
     {
         public IStatementRunner Runner { get; set; }
         public Statement Statement { get; set; }
-        public Func<IRecord, IDictionary<string, object>> Mapper { get; set; }
+        public Func<IRecord, Type, object> Mapper { get; set; }
 
         #region Constructors
         /// <summary> 
         /// This constructor is called by the client to create the data source. 
         /// </summary> 
-        public QueryableNeo4jStatement(IStatementRunner runner, Statement statement, Func<IRecord, IDictionary<string, object>> mapper)
+        public QueryableNeo4jStatement(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper)
         {
             Runner = runner ?? throw new ArgumentNullException(nameof(runner));
             Statement = statement ?? throw new ArgumentNullException(nameof(statement));
@@ -32,7 +32,7 @@ namespace N4pper.Queryable
         /// This constructor is called by Provider.CreateQuery(). 
         /// </summary> 
         /// <param name="expression"></param>
-        public QueryableNeo4jStatement(IStatementRunner runner, Statement statement, Func<IRecord, IDictionary<string, object>> mapper, CypherQueryProvider provider, Expression expression)
+        public QueryableNeo4jStatement(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper, CypherQueryProvider provider, Expression expression)
             :this(runner, statement, mapper)
         {
             provider = provider ?? throw new ArgumentNullException(nameof(provider));

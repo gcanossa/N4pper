@@ -11,9 +11,9 @@ namespace N4pper.Queryable
     {
         public IStatementRunner Runner { get; set; }
         public Statement Statement { get; set; }
-        public Func<IRecord, IDictionary<string, object>> Mapper { get; set; }
+        public Func<IRecord, Type, object> Mapper { get; set; }
 
-        public CypherQueryProvider(IStatementRunner runner, Statement statement, Func<IRecord, IDictionary<string, object>> mapper)
+        public CypherQueryProvider(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper)
         {
             Runner = runner ?? throw new ArgumentNullException(nameof(runner));
             Statement = statement ?? throw new ArgumentNullException(nameof(statement));

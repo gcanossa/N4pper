@@ -7,43 +7,90 @@ using N4pper.Decorators;
 using System.Text;
 using System.Threading.Tasks;
 using OMnG;
+using N4pper.Queryable;
+using System.Reflection;
+using System.Collections;
 
 namespace N4pper
 {
     public static class IStatementRunnerExtensions
     {
-        //TODO: add async support. Because of Neo4J.Driver, ConsumingEnumerables has to be used.
         #region helpers
-        
-        private static T Map<T>(IEntity entity) where T : class, new()
+
+        internal static IDictionary<string, object> GetPropDictionary(object entity)
         {
-            return new T().CopyProperties(entity.Properties.ToDictionary(p => p.Key, p => p.Value));
+            if (entity is IEntity)
+                return ((IEntity)entity).Properties.ToDictionary(p => p.Key, p => p.Value);
+            else if (entity is IDictionary<string, object>)
+                return ((Dictionary<string, object>)entity);
+            else
+                return null;
+        }
+        internal static T MapEntity<T>(IEntity entity)
+        {
+            object obj = null;
+            if(entity is INode)
+            {
+                obj = ((INode)entity).Labels.GetTypesFromLabels(new N4pperTypeExtensionsConfiguration()).GetInstanceOfMostSpecific();
+            }
+            else if(entity is IRelationship)
+            {
+                obj = new string[] { ((IRelationship)entity).Type }.GetTypesFromLabels(new N4pperTypeExtensionsConfiguration()).GetInstanceOfMostSpecific();
+            }
+
+            return ((T)obj).CopyProperties(entity.Properties.ToDictionary(p=>p.Key,p=>p.Value));
+        }
+        internal static object ParseRecordValue<T>(object value, Type type)
+        {
+            if (ObjectExtensions.IsCollection(typeof(T)))
+            {
+                if (!TypeSystem.IsEnumerable(typeof(T)))
+                    throw new InvalidOperationException("To map collections use IEnumerable`1");
+
+                MethodInfo m = typeof(IStatementRunnerExtensions).GetMethod($"{nameof(ParseRecordsValue)}", BindingFlags.NonPublic | BindingFlags.Static);
+                m = m.MakeGenericMethod(typeof(T).GetGenericArguments());
+                return m.Invoke(null, new object[] { value, type.GetGenericArguments()[0] });
+            }
+            else
+            {
+                if (value is IList<object>)
+                    return ParseRecordsValue<T>((IList<object>)value, type);
+                if (value is IEntity && typeof(T).IsAssignableFrom(type))
+                    return MapEntity<T>((IEntity)value);
+                else
+                    return ObjectExtensions.GetInstanceOf(type, GetPropDictionary(value));
+            }
+        }
+        internal static IList ParseRecordsValue<T>(IList<object> value, Type type)
+        {
+            IList lst = TypeSystem.GetListOf(type);
+            foreach (object item in value.Select(p => ParseRecordValue<T>(p, type)))
+            {
+                lst.Add(item);
+            }
+            return lst;
         }
         
-        private static IStatementResult GetResult(IStatementRunner ext, string query, object param)
+        internal static Statement GetStatement(string query, object param)
         {
-            ext = ext ?? throw new ArgumentNullException(nameof(ext));
             query = query ?? throw new ArgumentNullException(nameof(query));
 
-            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
-
-            IStatementResult result;
             if (param != null)
-                if(param is IDictionary<string, object>)
-                    result = ext.Run(query, (IDictionary<string, object>)param);
+                if (param is IDictionary<string, object>)
+                    return new Statement(query, (IDictionary<string, object>)param);
                 else
-                    result = ext.Run(query, param);
+                    return new Statement(query, param.ToPropDictionary());
             else
-                result = ext.Run(query);
-
-            return result;
+                return new Statement(query);
         }
 
         #endregion
 
         public static IResultSummary Execute(this IStatementRunner ext, string query, object param = null)
         {
-            return GetResult(ext, query, param).Summary;
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+
+            return ext.Run(GetStatement(query, param))?.Summary;
         }
         public static IEnumerable<IResultSummary> Execute(this IStatementRunner ext, string query, params object[] param)
         {
@@ -59,19 +106,19 @@ namespace N4pper
             }
         }
 
-        public static IEnumerable<T> ExecuteQuery<T>(this IStatementRunner ext, string query, object param = null) where T : class, new()
+        public static IQueryable<T> ExecuteQuery<T>(this IStatementRunner ext, string query, object param = null)
         {
-            IStatementResult result = GetResult(ext, query, param);
-            List<IRecord> records = result.ToList();
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
-            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner);
-
-            if (result.Keys.Count < 1)
-                throw new Exception("The query did not produced enough results");
-            
-            return records.Select(p => Map<T>((IEntity)p.Values[p.Keys[0]])).ToList();
+            return new QueryableNeo4jStatement<T>(
+                ext, 
+                GetStatement(query, param), 
+                (result, t) => 
+                {
+                    return ParseRecordValue<T>(result.Values[result.Keys[0]], t);
+                });
         }
-        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T>(this IStatementRunner ext, string query, params object[] param) where T : class, new()
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T>(this IStatementRunner ext, string query, params object[] param)
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             query = query ?? throw new ArgumentNullException(nameof(query));
@@ -84,147 +131,155 @@ namespace N4pper
                 yield return ext.ExecuteQuery<T>(query, item);
             }
         }
-        
-        public static IEnumerable<T> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T,T1,T> map, object param = null) 
+
+        public static IEnumerable<T> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, object param = null)
             where T : class, new()
             where T1 : class, new()
         {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
-            
-            IStatementResult result = GetResult(ext, query, param);
-            List<IRecord> records = result.ToList();
-
-            if (result.Keys.Count < 2)
-                throw new Exception("The query did not produced enough results");
-
-            return records.Select(p => 
-                map(
-                    Map<T>((IEntity)p.Values[p.Keys[0]]), 
-                    Map<T1>((IEntity)p.Values[p.Keys[1]]))
-                    ).ToList();
+            return null;
+            //return new QueryableNeo4jStatement<T>(
+            //    ext,
+            //    GetStatement(query, param),
+            //    result =>
+            //    {
+            //        return GetPropDictionary<T>(result.Values[result.Keys[0]]);
+            //    });
+            //return records.Select(p =>
+            //    map(
+            //        GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
+            //        GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]))
+            //        ).ToList();
         }
-        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-        {
-            if (param == null || param.Length == 0)
-                yield break;
+        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, params object[] param)
+        //    where T : class, new()
+        //    where T1 : class, new()
+        //{
+        //    if (param == null || param.Length == 0)
+        //        yield break;
 
-            foreach (object item in param)
-            {
-                yield return ext.ExecuteQuery<T, T1>(query, map, item);
-            }
-        }
+        //    foreach (object item in param)
+        //    {
+        //        yield return ext.ExecuteQuery<T, T1>(query, map, item);
+        //    }
+        //}
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, object param = null)
             where T : class, new()
             where T1 : class, new()
             where T2 : class, new()
         {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
-
-            IStatementResult result = GetResult(ext, query, param);
-            List<IRecord> records = result.ToList();
-
-            if (result.Keys.Count < 3)
-                throw new Exception("The query did not produced enough results");
-
-            return records.Select(p =>
-                map(
-                    Map<T>((IEntity)p.Values[p.Keys[0]]),
-                    Map<T1>((IEntity)p.Values[p.Keys[1]]),
-                    Map<T2>((IEntity)p.Values[p.Keys[2]]))
-                    ).ToList();
+            return null;
+            //return new QueryableNeo4jStatement<T>(
+            //    ext,
+            //    GetStatement(query, param),
+            //    result =>
+            //    {
+            //        return GetPropDictionary<T>(result.Values[result.Keys[0]]);
+            //    });
+            //return records.Select(p =>
+            //    map(
+            //        GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
+            //        GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]),
+            //        GetPropDictionary<T2>((IEntity)p.Values[p.Keys[2]]))
+            //        ).ToList();
         }
-        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-        {
-            if (param == null || param.Length == 0)
-                yield break;
+        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, params object[] param)
+        //    where T : class, new()
+        //    where T1 : class, new()
+        //    where T2 : class, new()
+        //{
+        //    if (param == null || param.Length == 0)
+        //        yield break;
 
-            foreach (object item in param)
-            {
-                yield return ext.ExecuteQuery<T, T1, T2>(query, map, item);
-            }
-        }
+        //    foreach (object item in param)
+        //    {
+        //        yield return ext.ExecuteQuery<T, T1, T2>(query, map, item);
+        //    }
+        //}
 
-        public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-        {
-            map = map ?? throw new ArgumentNullException(nameof(map));
+        //public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, object param = null)
+        //    where T : class, new()
+        //    where T1 : class, new()
+        //    where T2 : class, new()
+        //    where T3 : class, new()
+        //{
+        //    ext = ext ?? throw new ArgumentNullException(nameof(ext));
+        //    map = map ?? throw new ArgumentNullException(nameof(map));
 
-            IStatementResult result = GetResult(ext, query, param);
-            List<IRecord> records = result.ToList();
-            
-            if (result.Keys.Count < 4)
-                throw new Exception("The query did not produced enough results");
+        //    return new QueryableNeo4jStatement<T>(
+        //        ext,
+        //        GetStatement(query, param),
+        //        result =>
+        //        {
+        //            return GetPropDictionary<T>(result.Values[result.Keys[0]]);
+        //        });
+        //    return records.Select(p =>
+        //        map(
+        //            GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
+        //            GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]),
+        //            GetPropDictionary<T2>((IEntity)p.Values[p.Keys[2]]),
+        //            GetPropDictionary<T3>((IEntity)p.Values[p.Keys[3]]))
+        //            ).ToList();
+        //}
+        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, params object[] param)
+        //    where T : class, new()
+        //    where T1 : class, new()
+        //    where T2 : class, new()
+        //    where T3 : class, new()
+        //{
+        //    if (param == null || param.Length == 0)
+        //        yield break;
 
-            return records.Select(p =>
-                map(
-                    Map<T>((IEntity)p.Values[p.Keys[0]]),
-                    Map<T1>((IEntity)p.Values[p.Keys[1]]),
-                    Map<T2>((IEntity)p.Values[p.Keys[2]]),
-                    Map<T3>((IEntity)p.Values[p.Keys[3]]))
-                    ).ToList();
-        }
-        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-        {
-            if (param == null || param.Length == 0)
-                yield break;
+        //    foreach (object item in param)
+        //    {
+        //        yield return ext.ExecuteQuery<T, T1, T2, T3>(query, map, item);
+        //    }
+        //}
 
-            foreach (object item in param)
-            {
-                yield return ext.ExecuteQuery<T, T1, T2, T3>(query, map, item);
-            }
-        }
+        //public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, object param = null)
+        //    where T : class, new()
+        //    where T1 : class, new()
+        //    where T2 : class, new()
+        //    where T3 : class, new()
+        //    where T4 : class, new()
+        //{
+        //    ext = ext ?? throw new ArgumentNullException(nameof(ext));
+        //    map = map ?? throw new ArgumentNullException(nameof(map));
 
-        public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-            where T4 : class, new()
-        {
-            map = map ?? throw new ArgumentNullException(nameof(map));
+        //    return new QueryableNeo4jStatement<T>(
+        //        ext,
+        //        GetStatement(query, param),
+        //        result =>
+        //        {
+        //            return GetPropDictionary<T>(result.Values[result.Keys[0]]);
+        //        });
+        //    return records.Select(p =>
+        //        map(
+        //            GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
+        //            GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]),
+        //            GetPropDictionary<T2>((IEntity)p.Values[p.Keys[2]]),
+        //            GetPropDictionary<T3>((IEntity)p.Values[p.Keys[3]]),
+        //            GetPropDictionary<T4>((IEntity)p.Values[p.Keys[4]]))
+        //            ).ToList();
+        //}
+        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
+        //    where T : class, new()
+        //    where T1 : class, new()
+        //    where T2 : class, new()
+        //    where T3 : class, new()
+        //    where T4 : class, new()
+        //{
+        //    if (param == null || param.Length == 0)
+        //        yield break;
 
-            IStatementResult result = GetResult(ext, query, param);
-            List<IRecord> records = result.ToList();
-
-            if (result.Keys.Count < 5)
-                throw new Exception("The query did not produced enough results");
-
-            return records.Select(p =>
-                map(
-                    Map<T>((IEntity)p.Values[p.Keys[0]]),
-                    Map<T1>((IEntity)p.Values[p.Keys[1]]),
-                    Map<T2>((IEntity)p.Values[p.Keys[2]]),
-                    Map<T3>((IEntity)p.Values[p.Keys[3]]),
-                    Map<T4>((IEntity)p.Values[p.Keys[4]]))
-                    ).ToList();
-        }
-        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-            where T4 : class, new()
-        {
-            if (param == null || param.Length == 0)
-                yield break;
-
-            foreach (object item in param)
-            {
-                yield return ext.ExecuteQuery<T, T1, T2, T3, T4>(query, map, item);
-            }
-        }
+        //    foreach (object item in param)
+        //    {
+        //        yield return ext.ExecuteQuery<T, T1, T2, T3, T4>(query, map, item);
+        //    }
+        //}
     }
 }
