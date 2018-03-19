@@ -58,8 +58,8 @@ namespace N4pper.Orm
             if (ext
                 .SelectProperties(KnownTypes[typeof(T)])
                 .ExludeProperties(new[] { Constants.IdentityPropertyName })
-                .Any(p => p.Value == null || p.Value == OrmCoreHelpers.GetDefault(p.Value.GetType())))
-                throw new ArgumentException($"Every key property, except for '{Constants.IdentityPropertyName}', must have a vaue different from the default(T)");
+                .Any(p => p.Value == null || p.Value == ObjectExtensions.GetDefault(p.Value.GetType())))
+                throw new ArgumentException($"Every key property, except for '{Constants.IdentityPropertyName}', must have a value different from the default(T)");
         }
         internal static bool HasIdentityKey<T>()
         {
@@ -73,7 +73,7 @@ namespace N4pper.Orm
         {
             PropertyInfo info = typeof(T).GetProperty(Constants.IdentityPropertyName);
             object value = info.GetValue(ext);
-            return value == null || value.Equals(OrmCoreHelpers.GetDefault(info.PropertyType));
+            return value == null || value.Equals(ObjectExtensions.GetDefault(info.PropertyType));
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Text.RegularExpressions;
 using q = System.Linq.Queryable;
 
 namespace N4pper.Queryable
@@ -30,6 +31,36 @@ namespace N4pper.Queryable
                 else if (m.Method.Name == nameof(q.Distinct) && m.Arguments.Count==1)
                 {
                     _builder.Append(" WITH DISTINCT *");
+                }
+                else
+                    throw new NotSupportedException($"The method '{m.Method.Name}' is not supported");
+
+                return m;
+            }
+            else if (m.Method.DeclaringType == typeof(Enumerable))
+            {
+                if (m.Method.Name == nameof(Enumerable.Contains) && m.Arguments.Count == 2)
+                {
+                    Visit(m.Arguments[1]);
+
+                    _builder.Append(" IN ");
+
+                    Visit(m.Arguments[0]);
+                }
+                else
+                    throw new NotSupportedException($"The method '{m.Method.Name}' is not supported");
+
+                return m;
+            }
+            else if (m.Method.DeclaringType == typeof(Regex))
+            {
+                if (m.Method.Name == nameof(Regex.IsMatch))
+                {
+                    Visit(m.Arguments[0]);
+
+                    _builder.Append(" =~ ");
+
+                    Visit(m.Arguments[1]);
                 }
                 else
                     throw new NotSupportedException($"The method '{m.Method.Name}' is not supported");

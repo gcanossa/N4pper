@@ -110,7 +110,10 @@ namespace N4pper
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
-            return new QueryableNeo4jStatement<T>(
+            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+                    throw new InvalidOperationException("To map collections use IEnumerable`1");
+
+                return new QueryableNeo4jStatement<T>(
                 ext, 
                 GetStatement(query, param), 
                 (result, t) => 
@@ -138,32 +141,35 @@ namespace N4pper
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
-            return null;
-            //return new QueryableNeo4jStatement<T>(
-            //    ext,
-            //    GetStatement(query, param),
-            //    result =>
-            //    {
-            //        return GetPropDictionary<T>(result.Values[result.Keys[0]]);
-            //    });
-            //return records.Select(p =>
-            //    map(
-            //        GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
-            //        GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]))
-            //        ).ToList();
-        }
-        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, params object[] param)
-        //    where T : class, new()
-        //    where T1 : class, new()
-        //{
-        //    if (param == null || param.Length == 0)
-        //        yield break;
 
-        //    foreach (object item in param)
-        //    {
-        //        yield return ext.ExecuteQuery<T, T1>(query, map, item);
-        //    }
-        //}
+            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+
+            return new QueryableNeo4jStatement<T>(
+                ext,
+                GetStatement(query, param),
+                (result, t) =>
+                {
+                    return map(
+                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
+                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1))
+                        );
+                });
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+        {
+            if (param == null || param.Length == 0)
+                yield break;
+
+            foreach (object item in param)
+            {
+                yield return ext.ExecuteQuery<T, T1>(query, map, item);
+            }
+        }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, object param = null)
             where T : class, new()
@@ -172,114 +178,135 @@ namespace N4pper
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
-            return null;
-            //return new QueryableNeo4jStatement<T>(
-            //    ext,
-            //    GetStatement(query, param),
-            //    result =>
-            //    {
-            //        return GetPropDictionary<T>(result.Values[result.Keys[0]]);
-            //    });
-            //return records.Select(p =>
-            //    map(
-            //        GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
-            //        GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]),
-            //        GetPropDictionary<T2>((IEntity)p.Values[p.Keys[2]]))
-            //        ).ToList();
+
+            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T2)) && !TypeSystem.IsEnumerable(typeof(T2)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+
+            return new QueryableNeo4jStatement<T>(
+                ext,
+                GetStatement(query, param),
+                (result, t) =>
+                {
+                    return map(
+                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
+                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1)),
+                        (T2)ParseRecordValue<T2>(result.Values[result.Keys[2]], typeof(T2))
+                        );
+                });
         }
-        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, params object[] param)
-        //    where T : class, new()
-        //    where T1 : class, new()
-        //    where T2 : class, new()
-        //{
-        //    if (param == null || param.Length == 0)
-        //        yield break;
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+        {
+            if (param == null || param.Length == 0)
+                yield break;
 
-        //    foreach (object item in param)
-        //    {
-        //        yield return ext.ExecuteQuery<T, T1, T2>(query, map, item);
-        //    }
-        //}
+            foreach (object item in param)
+            {
+                yield return ext.ExecuteQuery<T, T1, T2>(query, map, item);
+            }
+        }
 
-        //public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, object param = null)
-        //    where T : class, new()
-        //    where T1 : class, new()
-        //    where T2 : class, new()
-        //    where T3 : class, new()
-        //{
-        //    ext = ext ?? throw new ArgumentNullException(nameof(ext));
-        //    map = map ?? throw new ArgumentNullException(nameof(map));
+        public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, object param = null)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            map = map ?? throw new ArgumentNullException(nameof(map));
 
-        //    return new QueryableNeo4jStatement<T>(
-        //        ext,
-        //        GetStatement(query, param),
-        //        result =>
-        //        {
-        //            return GetPropDictionary<T>(result.Values[result.Keys[0]]);
-        //        });
-        //    return records.Select(p =>
-        //        map(
-        //            GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
-        //            GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]),
-        //            GetPropDictionary<T2>((IEntity)p.Values[p.Keys[2]]),
-        //            GetPropDictionary<T3>((IEntity)p.Values[p.Keys[3]]))
-        //            ).ToList();
-        //}
-        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, params object[] param)
-        //    where T : class, new()
-        //    where T1 : class, new()
-        //    where T2 : class, new()
-        //    where T3 : class, new()
-        //{
-        //    if (param == null || param.Length == 0)
-        //        yield break;
+            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T2)) && !TypeSystem.IsEnumerable(typeof(T2)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T3)) && !TypeSystem.IsEnumerable(typeof(T3)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
 
-        //    foreach (object item in param)
-        //    {
-        //        yield return ext.ExecuteQuery<T, T1, T2, T3>(query, map, item);
-        //    }
-        //}
+            return new QueryableNeo4jStatement<T>(
+                ext,
+                GetStatement(query, param),
+                (result, t) =>
+                {
+                    return map(
+                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
+                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1)),
+                        (T2)ParseRecordValue<T2>(result.Values[result.Keys[2]], typeof(T2)),
+                        (T3)ParseRecordValue<T3>(result.Values[result.Keys[3]], typeof(T3))
+                        );
+                });
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+        {
+            if (param == null || param.Length == 0)
+                yield break;
 
-        //public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, object param = null)
-        //    where T : class, new()
-        //    where T1 : class, new()
-        //    where T2 : class, new()
-        //    where T3 : class, new()
-        //    where T4 : class, new()
-        //{
-        //    ext = ext ?? throw new ArgumentNullException(nameof(ext));
-        //    map = map ?? throw new ArgumentNullException(nameof(map));
+            foreach (object item in param)
+            {
+                yield return ext.ExecuteQuery<T, T1, T2, T3>(query, map, item);
+            }
+        }
 
-        //    return new QueryableNeo4jStatement<T>(
-        //        ext,
-        //        GetStatement(query, param),
-        //        result =>
-        //        {
-        //            return GetPropDictionary<T>(result.Values[result.Keys[0]]);
-        //        });
-        //    return records.Select(p =>
-        //        map(
-        //            GetPropDictionary<T>((IEntity)p.Values[p.Keys[0]]),
-        //            GetPropDictionary<T1>((IEntity)p.Values[p.Keys[1]]),
-        //            GetPropDictionary<T2>((IEntity)p.Values[p.Keys[2]]),
-        //            GetPropDictionary<T3>((IEntity)p.Values[p.Keys[3]]),
-        //            GetPropDictionary<T4>((IEntity)p.Values[p.Keys[4]]))
-        //            ).ToList();
-        //}
-        //public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
-        //    where T : class, new()
-        //    where T1 : class, new()
-        //    where T2 : class, new()
-        //    where T3 : class, new()
-        //    where T4 : class, new()
-        //{
-        //    if (param == null || param.Length == 0)
-        //        yield break;
+        public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, object param = null)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+            where T4 : class, new()
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            map = map ?? throw new ArgumentNullException(nameof(map));
 
-        //    foreach (object item in param)
-        //    {
-        //        yield return ext.ExecuteQuery<T, T1, T2, T3, T4>(query, map, item);
-        //    }
-        //}
+            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T2)) && !TypeSystem.IsEnumerable(typeof(T2)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T3)) && !TypeSystem.IsEnumerable(typeof(T3)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+            if (ObjectExtensions.IsCollection(typeof(T4)) && !TypeSystem.IsEnumerable(typeof(T4)))
+                throw new InvalidOperationException("To map collections use IEnumerable`1");
+
+            return new QueryableNeo4jStatement<T>(
+                ext,
+                GetStatement(query, param),
+                (result, t) =>
+                {
+                    return map(
+                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
+                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1)),
+                        (T2)ParseRecordValue<T2>(result.Values[result.Keys[2]], typeof(T2)),
+                        (T3)ParseRecordValue<T3>(result.Values[result.Keys[3]], typeof(T3)),
+                        (T4)ParseRecordValue<T4>(result.Values[result.Keys[4]], typeof(T4))
+                        );
+                });
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+            where T4 : class, new()
+        {
+            if (param == null || param.Length == 0)
+                yield break;
+
+            foreach (object item in param)
+            {
+                yield return ext.ExecuteQuery<T, T1, T2, T3, T4>(query, map, item);
+            }
+        }
     }
 }

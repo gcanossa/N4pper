@@ -1,4 +1,6 @@
-﻿using System;
+﻿using OMnG;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -42,6 +44,10 @@ namespace N4pper.Queryable
 
                     Visit(u.Operand);
                     break;
+
+                case ExpressionType.Convert:
+                    Visit(u.Operand);
+                    break;
                 default:
                     throw new NotSupportedException($"The unary operator '{u.NodeType}' is not supported");
             }
@@ -64,7 +70,7 @@ namespace N4pper.Queryable
                     break;
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
-                    _builder.Append(" OR");
+                    _builder.Append(" OR ");
 
                     break;
                 case ExpressionType.Equal:
@@ -96,6 +102,26 @@ namespace N4pper.Queryable
                 case ExpressionType.GreaterThanOrEqual:
                     _builder.Append(" >= ");
                     
+                    break;
+                case ExpressionType.Subtract:
+                    _builder.Append(" - ");
+
+                    break;
+                case ExpressionType.Add:
+                    _builder.Append(" + ");
+
+                    break;
+                case ExpressionType.Multiply:
+                    _builder.Append(" * ");
+
+                    break;
+                case ExpressionType.Divide:
+                    _builder.Append(" / ");
+
+                    break;
+                case ExpressionType.Modulo:
+                    _builder.Append(" % ");
+
                     break;
                 default:
                     throw new NotSupportedException($"The binary operator '{b.NodeType}' is not supported");
@@ -131,12 +157,31 @@ namespace N4pper.Queryable
 
                         break;
                     case TypeCode.DateTime:
-                        DateTimeOffset d = (DateTime)c.Value;
-                        _builder.Append(d.ToUnixTimeMilliseconds());
+                    case TypeCode.Object:
+                        if (ObjectExtensions.IsDateTime(c.Value.GetType()))
+                        {
+                            DateTimeOffset d = (DateTime)c.Value;
+                            _builder.Append(d.ToUnixTimeMilliseconds());
+                        }
+                        else if (c.Value.GetType() == typeof(TimeSpan) || c.Value.GetType() == typeof(TimeSpan?))
+                        {
+                            _builder.Append(((TimeSpan)c.Value).TotalMilliseconds);
+                        }
+                        else if(typeof(IEnumerable).IsAssignableFrom(c.Value.GetType()))
+                        {
+                            _builder.Append("[");
+                            foreach (object obj in ((IEnumerable)c.Value))
+                            {
+                                Visit(Expression.Constant(obj));
+                                _builder.Append(",");
+                            }
+                            _builder.Remove(_builder.Length - 1, 1);
+                            _builder.Append("]");
+                        }
+                        else
+                            throw new NotSupportedException($"Only primitive types are supported. Expression '{c.Value}'");
 
                         break;
-                    case TypeCode.Object:
-                        throw new NotSupportedException($"Only primitive types are supported. Expression '{c.Value}'");
                     default:
                         _builder.Append(c.Value);
 

@@ -73,7 +73,7 @@ namespace N4pper.Queryable
             switch(expr.Method.Name)
             {
                 case nameof(q.Where):
-                    return expr.Arguments[1].Type.GetGenericArguments()[0].GetGenericArguments().Length == 1;
+                    return expr.Arguments[1].Type.GetGenericArguments()[0].GetGenericArguments().Length == 2;
                 case nameof(q.Distinct):
                     return expr.Arguments.Count == 1;
                 case nameof(q.Select):

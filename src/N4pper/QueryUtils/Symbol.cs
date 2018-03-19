@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace N4pper.Orm.Cypher
+namespace N4pper.QueryUtils
 {
     public class Symbol
     {
@@ -16,11 +16,15 @@ namespace N4pper.Orm.Cypher
             return new Symbol(obj);
         }
         protected string Value { get; set; }
-        internal Symbol(string value)
+        public Symbol(string value = null)
         {
-            value = value ?? throw new ArgumentNullException(nameof(value));
-            if (!Regex.IsMatch(value, "^[a-zA-Z_][\\w\\$]*"))
-                throw new ArgumentException("invalid format", nameof(value));
+            if (value != null)
+            {
+                if (!Regex.IsMatch(value, "^[a-zA-Z_][\\w\\$]*"))
+                    throw new ArgumentException("invalid format", nameof(value));
+            }
+            else
+                value = $"_{Guid.NewGuid().ToString("N")}";
 
             Value = value;
         }

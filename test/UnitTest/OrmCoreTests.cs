@@ -7,7 +7,7 @@ using Xunit;
 using AsIKnow.XUnitExtensions;
 using N4pper.Orm;
 using N4pper.Diagnostic;
-using N4pper.Orm.Cypher;
+using N4pper.QueryUtils;
 
 namespace UnitTest
 {
@@ -54,7 +54,7 @@ namespace UnitTest
             public long Id { get; set; }
             public string Name { get; set; }
         }
-        
+
         public interface IEntity
         {
             long Id { get; }
@@ -116,12 +116,12 @@ namespace UnitTest
         public void NodeCreation()
         {
             (IDriver driver, N4pperManager mgr) = SetUp();
-            
+
             using (ISession session = driver.Session())
             {
-                int count = session.Run($"MATCH (p) WHERE NOT p:{StatementHelpers.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                int count = session.Run($"MATCH (p) WHERE NOT p:{N4pper.Constants.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
-                Person p = session.AddOrUpdateNode<Person>(new Person() { Age=1, Name="pippy" });
+                Person p = session.AddOrUpdateNode<Person>(new Person() { Age = 1, Name = "pippy" });
 
                 Assert.True(0 < p.Id);
 
@@ -131,8 +131,8 @@ namespace UnitTest
                 Assert.Equal(2, p.Age);
 
                 Assert.Equal(1, session.DeleteNode(p));
-                
-                int newcount = session.Run($"MATCH (p) WHERE NOT p:{StatementHelpers.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x=>x.Values[x.Keys[0]].As<int>()).First();
+
+                int newcount = session.Run($"MATCH (p) WHERE NOT p:{N4pper.Constants.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
                 Assert.Equal(count, newcount);
 
                 Assert.Equal(0, session.DeleteNode(p));
@@ -145,7 +145,7 @@ namespace UnitTest
         public void RelCreation()
         {
             (IDriver driver, N4pperManager mgr) = SetUp();
-            
+
             using (ISession session = driver.Session())
             {
                 int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
@@ -164,8 +164,8 @@ namespace UnitTest
                 c = session.AddOrUpdateRel<Class, Student, Teacher>(c);
 
                 Assert.Equal("3° A", c.Name);
-                
-                Assert.Equal(1,session.DeleteRel<Class>(c));
+
+                Assert.Equal(1, session.DeleteRel<Class>(c));
                 Assert.Equal(0, session.DeleteRel<Class>(c));
 
                 int newcount = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
@@ -193,7 +193,7 @@ namespace UnitTest
 
                 Question[] qs = new Question[] { new Question(), new Question(), new Question(), new Question(), new Question() };
 
-                session.WriteTransaction(tx => 
+                session.WriteTransaction(tx =>
                 {
                     qs = tx.AddOrUpdateNodes(qs).ToArray();
                 });
@@ -211,18 +211,16 @@ namespace UnitTest
 
                 ContentPersonRel rel4 = session.AddOrUpdateRel(new ContentPersonRel(), t1, ss[0]);
 
-                var tmp1 = session.QueryForNode<IContent, ContentHolder>();
+                Symbol p = new Symbol();
+                var tmp1 = session.ExecuteQuery<IContent>($"match {new Node(p, type:typeof(IContent))} return {p}").ToList();
                 Assert.Equal(ss.Length + qs.Length, tmp1.Count());
 
-                var tmp1_ = session.QueryForNode<IEntity, ContentHolder>();
+                var tmp1_ = session.ExecuteQuery<IEntity>($"match {new Node(p, type: typeof(IEntity))} return {p}").ToList();
                 Assert.Equal(ss.Length + qs.Length, tmp1_.Count());
 
-                var tmp2 = session.QueryForRel<ContentPersonRel>();
+                var tmp2 = session.ExecuteQuery<IEntity>($"match {new Node()._(p, typeof(ContentPersonRel))._()} return {p}").ToList();
                 Assert.Equal(4, tmp2.Count());
                 
-                var tmp3 = session.QueryForRel<ContentPersonRel, Student, Question>((r,s,q)=> { r.Content = q; r.Person = s; return r; });
-                Assert.Equal(3, tmp3.Count());
-
                 session.WriteTransaction(tx =>
                 {
                     tx.DeleteRel(rel1);

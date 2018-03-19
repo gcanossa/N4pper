@@ -8,6 +8,7 @@ using System.Text;
 using Xunit;
 using Neo4j.Driver.V1;
 using OMnG;
+using System.Text.RegularExpressions;
 
 namespace UnitTest
 {
@@ -47,15 +48,28 @@ namespace UnitTest
 
             using (ISession session = driver.Session())
             {
+                DateTime birthday = DateTime.Now - TimeSpan.FromDays(2);
+                session.Run("create (p$lbls $obj)", new Dictionary<string, object>()
+                {
+                    { "lbls", "Prova"},
+                    { "obj", new Dictionary<string, object>(){
+                        { "Name","Pippo" },
+                        { "Birthday", ((DateTimeOffset)birthday).ToUnixTimeMilliseconds() },
+                        { "Age",(birthday - DateTime.Now).TotalMilliseconds }
+                    } }
+                });
 
-                var query = session.ExecuteQuery<IEnumerable<Child>>(
+
+                var query = session.ExecuteQuery<Child>(
                     "MATCH (q:`UnitTest.QueryableTests+Child`)-[:Of]->(x:`UnitTest.QueryableTests+Parent`) RETURN collect(q) as q,collect(x) as x",
                     new Dictionary<string, object>() { { "Id", "3" } });
                 
                 DateTime date = DateTime.Now - TimeSpan.FromDays(1);
 
+                int[] ids = new int[] { 1, 2, 3 };
+
                 var test =
-                    query.ToList();//.Select((p, i) => new { p.Id }).ToList();
+                    query.Where(p=>ids.Contains(p.Id) && p.Deathday - p.Birthday < TimeSpan.FromDays(1) || Regex.IsMatch(p.Name,"pat?ern")).ToList();//.Select((p, i) => new { p.Id }).ToList();
                     //.Select(p=> new { p.Id, p.Name})
                     //.Select(p => new { p.Id })
                     //.Select((p, i)=> new { p.Id })

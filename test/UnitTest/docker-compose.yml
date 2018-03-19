@@ -2,7 +2,7 @@
 
 services:
   database:
-    image: neo4j:3.3.3
+    image: asiknow/neo4j
     ports:
       - 7475:7474
       - 7688:7687

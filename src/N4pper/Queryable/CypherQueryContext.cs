@@ -25,8 +25,8 @@ namespace N4pper.Queryable
             (string firstVar, IEnumerable<string> otherVars) = GetFirstCypherVariableName(statement);
 
             string queryText = tranaslator.Translate(expression, out MethodCallExpression terminal, out int? countFromBegin, out typeResult, firstVar, otherVars);
-
-            IStatementResult result = runner.Run($"{statement.Text.Replace("RETURN","WITH")} {queryText}", statement.Parameters);
+                        
+            IStatementResult result = runner.Run($"{Regex.Replace(statement.Text, "RETURN", "WITH", RegexOptions.IgnoreCase)} {queryText}", statement.Parameters);
 
             IQueryable<IRecord> records = result.ToList().AsQueryable();
 

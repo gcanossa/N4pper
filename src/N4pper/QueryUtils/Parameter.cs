@@ -3,26 +3,26 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace N4pper.Cypher
+namespace N4pper.QueryUtils
 {
-    public class Symbol
+    public class Parameter
     {
-        public static implicit operator string(Symbol obj)
+        public static implicit operator string(Parameter obj)
         {
             return obj?.ToString();
         }
-        public static implicit operator Symbol(string obj)
+        public static implicit operator Parameter(string obj)
         {
-            return new Symbol(obj);
+            return new Parameter(obj);
         }
         protected string Value { get; set; }
-        internal Symbol(string value)
+        internal Parameter(string value)
         {
             value = value ?? throw new ArgumentNullException(nameof(value));
-            if (!Regex.IsMatch(value, "^[a-zA-Z_][\\w\\$]*"))
+            if (!Regex.IsMatch(value, "^[\\w\\$]*"))
                 throw new ArgumentException("invalid format", nameof(value));
 
-            Value = value;
+            Value = value.StartsWith("$") ? value : $"${value}";
         }
         public override string ToString()
         {

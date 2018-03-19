@@ -30,7 +30,8 @@ namespace N4pper.Queryable
 
         private static bool CanBeEvaluatedLocally(Expression expression)
         {
-            return expression.NodeType != ExpressionType.Parameter;
+            return expression.NodeType != ExpressionType.Parameter && 
+                (expression.NodeType != ExpressionType.Constant && expression.Type.Name != "QueryableNeo4jStatement`1");
         }
 
         /// <summary> 

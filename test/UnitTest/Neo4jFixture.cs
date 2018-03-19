@@ -26,11 +26,11 @@ namespace UnitTest
 
             sc.AddTransient<IQueryTracer, QueryTraceLogger>();
 
-            sc.AddTransient<Neo4jServer_DriverBuilder>(provider=> new Neo4jServer_DriverBuilder(Configuration));
+            sc.AddTransient<Neo4jServer_DriverBuilder>(provider => new Neo4jServer_DriverBuilder(Configuration));
             //sc.AddTransient<TestContext>();
             //sc.AddTransient<DriverProvider<TestContext>, Neo4jServer_DriverProvider>();
             //sc.AddTransient<IDriver>(s => GraphDatabase.Driver(new Uri(Configuration.GetConnectionString("DefaultConnection")), AuthTokens.None));
-            
+
             sc.AddLogging(builder => builder.AddDebug().AddConsole());
         }
 
