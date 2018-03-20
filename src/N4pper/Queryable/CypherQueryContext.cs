@@ -16,7 +16,7 @@ namespace N4pper.Queryable
         internal static object Execute<TResult>(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper, Expression expression)
         {
             bool IsEnumerable = TypeSystem.IsEnumerable(typeof(TResult));
-            Type typeResult;// = IsEnumerable ? typeof(TResult).GetGenericArguments()[0] : typeof(TResult);
+            Type typeResult;
 
             QueryTranslator tranaslator = new QueryTranslator();
 

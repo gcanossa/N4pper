@@ -89,10 +89,6 @@ namespace UnitTest
             public IContent Content { get; set; }
         }
 
-        public class ContentHolder : IContent
-        {
-            public long Id { get; set; }
-        }
         public class EntityHolder : IEntity
         {
             public long Id { get; set; }
@@ -183,6 +179,7 @@ namespace UnitTest
             using (ISession session = driver.Session())
             {
                 int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                Assert.NotNull(QueryTraceLogger.LastStatement);
 
                 Student s1 = session.AddOrUpdateNode<Student>(new Student() { Age = 17, Name = "luca" });
                 Student s2 = session.AddOrUpdateNode<Student>(new Student() { Age = 18, Name = "piero" });
@@ -211,6 +208,7 @@ namespace UnitTest
 
                 ContentPersonRel rel4 = session.AddOrUpdateRel(new ContentPersonRel(), t1, ss[0]);
 
+                //TODO: la copia delle proprietà non funziona perché OMnG cerca le proprietà sul tipo dichiarato e non sull'effettivo.
                 Symbol p = new Symbol();
                 var tmp1 = session.ExecuteQuery<IContent>($"match {new Node(p, type:typeof(IContent))} return {p}").ToList();
                 Assert.Equal(ss.Length + qs.Length, tmp1.Count());
@@ -218,7 +216,7 @@ namespace UnitTest
                 var tmp1_ = session.ExecuteQuery<IEntity>($"match {new Node(p, type: typeof(IEntity))} return {p}").ToList();
                 Assert.Equal(ss.Length + qs.Length, tmp1_.Count());
 
-                var tmp2 = session.ExecuteQuery<IEntity>($"match {new Node()._(p, typeof(ContentPersonRel))._()} return {p}").ToList();
+                var tmp2 = session.ExecuteQuery<IEntity>($"match {new Node()._(p, typeof(ContentPersonRel))._V()} return {p}").ToList();
                 Assert.Equal(4, tmp2.Count());
                 
                 session.WriteTransaction(tx =>

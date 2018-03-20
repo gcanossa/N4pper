@@ -88,7 +88,7 @@ namespace N4pper.Orm
                 typeof(TNode),
                 value.SelectProperties(OrmCoreTypes.KnownTypes[typeof(TNode)]));
 
-            return ext.Execute($"MATCH {node} DELETE {n}", value).Counters.NodesDeleted;
+            return ext.Execute($"MATCH {node} DETACH DELETE {n}", value).Counters.NodesDeleted;
         }
         public static int DeleteNodes<TNode>(this ITransaction ext, IEnumerable<TNode> value) where TNode : class
         {
@@ -257,5 +257,162 @@ namespace N4pper.Orm
         }
 
         #endregion
+
+        #region _R__ ops
+
+        public static IEnumerable<TResult> NodeSet<TNode, TResult>(this IStatementRunner ext, object param = null)
+            where TNode : class
+            where TResult : class, TNode, new()
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+
+            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
+
+            Symbol n = new Symbol();
+
+            StringBuilder sb = new StringBuilder();
+
+            Node node = new Node(n,
+                typeof(TNode),
+                param?.SelectPrimitiveTypesProperties()
+                );
+            node.Parametrize();
+
+            sb.Append($"MATCH {node} RETURN {n}");
+
+            return ext.ExecuteQuery<TResult>(sb.ToString(), param);
+        }
+
+        public static IEnumerable<TResult> RelSet<TRel, TResult>(this IStatementRunner ext, object param = null)
+            where TRel : class
+            where TResult : class, TRel, new()
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+
+            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
+
+            Symbol r = new Symbol();
+
+            Rel rel = new Rel(r,
+                typeof(TRel),
+                param?.SelectPrimitiveTypesProperties()
+                );
+            rel.Parametrize();
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append($"MATCH ()-{rel}->() RETURN {r} ");
+
+            return ext.ExecuteQuery<TResult>(sb.ToString(), param);
+        }
+        
+        #endregion
+
+        #region _R__ ops overrides
+
+        public static IEnumerable<T> NodeSet<T>(this IStatementRunner ext, object param = null) where T : class, new()
+        {
+            return ext.NodeSet<T, T>(param);
+        }
+
+        public static IEnumerable<TRel> RelSet<TRel>(this IStatementRunner ext, object param = null)
+            where TRel : class, new()
+        {
+            return ext.RelSet<TRel, TRel>(param);
+        }
+
+        #endregion
+        
+        public static void LinkNodes<S, TRel, D>(this IStatementRunner ext, S source, D destination)
+            where TRel : class
+            where S : class, new()
+            where D : class, new()
+        {
+            if (!OrmCoreTypes.KnownTypes.ContainsKey(typeof(S)))
+                throw new InvalidOperationException($"type {typeof(S).FullName} is unknown");
+            if (!OrmCoreTypes.KnownTypes.ContainsKey(typeof(D)))
+                throw new InvalidOperationException($"type {typeof(D).FullName} is unknown");
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            source = source ?? throw new ArgumentNullException(nameof(source));
+            destination = destination ?? throw new ArgumentNullException(nameof(destination));
+            
+            source.ValidateObjectKeyValues();
+            destination.ValidateObjectKeyValues();
+
+            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+            Symbol nS = new Symbol();
+            Symbol r = new Symbol();
+            Symbol nD = new Symbol();
+
+            Node nodeS = new Node(nS,
+                typeof(S),
+                source?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)]));
+            Parameters nSp = nodeS.Parametrize(nameof(nS));
+            parameters = parameters.MergeWith(nSp.Prepare(source?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)])));
+
+            Node nodeD = new Node(nD,
+                typeof(D),
+                destination?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)]));
+            Parameters nDp = nodeD.Parametrize(nameof(nD));
+            parameters = parameters.MergeWith(nDp.Prepare(destination?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)])));
+            
+            Rel rel = new Rel(r,
+                typeof(TRel));
+
+            StringBuilder sb = new StringBuilder();
+            
+            sb.Append($"MATCH {nodeS} MATCH {nodeD} MERGE {new Node(nS)._(rel)._V(nD)}");
+
+            ext.Execute(sb.ToString(), parameters);
+        }
+
+        public static void UnlinkNodes<S, TRel, D>(this IStatementRunner ext, S source, D destination)
+            where TRel : class
+            where S : class, new()
+            where D : class, new()
+        {
+            if (!OrmCoreTypes.KnownTypes.ContainsKey(typeof(S)))
+                throw new InvalidOperationException($"type {typeof(S).FullName} is unknown");
+            if (!OrmCoreTypes.KnownTypes.ContainsKey(typeof(D)))
+                throw new InvalidOperationException($"type {typeof(D).FullName} is unknown");
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            source = source ?? throw new ArgumentNullException(nameof(source));
+            destination = destination ?? throw new ArgumentNullException(nameof(destination));
+
+            source.ValidateObjectKeyValues();
+            destination.ValidateObjectKeyValues();
+
+            IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+            Symbol nS = new Symbol();
+            Symbol r = new Symbol();
+            Symbol nD = new Symbol();
+
+            Node nodeS = new Node(nS,
+                typeof(S),
+                source?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)]));
+            Parameters nSp = nodeS.Parametrize(nameof(nS));
+            parameters = parameters.MergeWith(nSp.Prepare(source?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(S)])));
+
+            Node nodeD = new Node(nD,
+                typeof(D),
+                destination?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)]));
+            Parameters nDp = nodeD.Parametrize(nameof(nD));
+            parameters = parameters.MergeWith(nDp.Prepare(destination?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)])));
+
+            Rel rel = new Rel(r,
+                typeof(TRel));
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append($"MATCH {nodeS._(rel)._V(nodeD)} DELETE {r}");
+
+            ext.Execute(sb.ToString(), parameters);
+        }
     }
 }

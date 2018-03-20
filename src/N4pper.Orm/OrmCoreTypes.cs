@@ -10,7 +10,6 @@ namespace N4pper.Orm
 {
     internal static class OrmCoreTypes
     {
-        internal static TypeExtensionsConfiguration OMnGConfiguration { get; } = new N4pperTypeExtensionsConfiguration();
         internal static Dictionary<Type, IEnumerable<string>> KnownTypes { get; private set; } = new Dictionary<Type, IEnumerable<string>>();
 
         private static void ValidateKey(Type type, IEnumerable<string> keyProps)

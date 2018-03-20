@@ -9,6 +9,7 @@ namespace UnitTest
     public class QueryTraceLogger : IQueryTracer
     {
         protected ILogger Logger { get; set; }
+        public static string LastStatement { get; private set; }
         public QueryTraceLogger(ILogger<QueryTraceLogger> logger)
         {
             Logger = logger;
@@ -16,6 +17,7 @@ namespace UnitTest
         public void Trace(string query)
         {
             Logger.LogDebug(query);
+            LastStatement = query;
         }
     }
 }
