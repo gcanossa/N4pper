@@ -43,7 +43,7 @@ namespace UnitTest
             {
                 base.OnModelCreating(builder);
 
-                builder.Entity<OrmCoreTests.Person>();
+                builder.Entity<OrmCoreTests.PersonX>();
                 builder.Entity<OrmCoreTests.Student>(p => p.Id);
                 builder.Entity<OrmCoreTests.Teacher>();
                 builder.Entity<OrmCoreTests.Class>();
@@ -51,6 +51,11 @@ namespace UnitTest
                 builder.Entity<OrmCoreTests.Question>();
                 builder.Entity<OrmCoreTests.Suggestion>();
                 builder.Entity<OrmCoreTests.ContentPersonRel>();
+
+
+                builder.Entity<UnitTest.Types.Person>();
+                builder.Entity<UnitTest.Types.Child>();
+                builder.Entity<UnitTest.Types.Parent>();
             }
         }
 

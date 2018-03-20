@@ -8,6 +8,8 @@ using AsIKnow.XUnitExtensions;
 using N4pper.Orm;
 using N4pper.Diagnostic;
 using N4pper.QueryUtils;
+using t=UnitTest.Types;
+using UnitTest.Types;
 
 namespace UnitTest
 {
@@ -32,19 +34,19 @@ namespace UnitTest
 
         #region nested types
 
-        public class Person
+        public class PersonX
         {
             public long Id { get; set; }
             public string Name { get; set; }
             public int Age { get; set; }
         }
 
-        public class Student : Person
+        public class Student : PersonX
         {
             public Teacher Teacher { get; set; }
         }
 
-        public class Teacher : Person
+        public class Teacher : PersonX
         {
             public List<Student> Students { get; set; } = new List<Student>();
         }
@@ -85,7 +87,7 @@ namespace UnitTest
         public class ContentPersonRel : IEntity
         {
             public long Id { get; set; }
-            public Person Person { get; set; }
+            public PersonX Person { get; set; }
             public IContent Content { get; set; }
         }
 
@@ -117,12 +119,12 @@ namespace UnitTest
             {
                 int count = session.Run($"MATCH (p) WHERE NOT p:{N4pper.Constants.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
 
-                Person p = session.AddOrUpdateNode<Person>(new Person() { Age = 1, Name = "pippy" });
+                PersonX p = session.AddOrUpdateNode<PersonX>(new PersonX() { Age = 1, Name = "pippy" });
 
                 Assert.True(0 < p.Id);
 
                 p.Age = 2;
-                p = session.AddOrUpdateNode<Person>(p);
+                p = session.AddOrUpdateNode<PersonX>(p);
 
                 Assert.Equal(2, p.Age);
 
@@ -233,6 +235,67 @@ namespace UnitTest
                     tx.DeleteNode(t2);
                     tx.DeleteNodes(qs);
                     tx.DeleteNodes(ss);
+                });
+
+                int newcount = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                Assert.Equal(count, newcount);
+            }
+        }
+
+        [TestPriority(0)]
+        [Trait("Category", nameof(OrmCoreTests))]
+        [Fact(DisplayName = nameof(NodeLinking))]
+        public void NodeLinking()
+        {
+            (IDriver driver, N4pperManager mgr) = SetUp();
+
+            using (ISession session = driver.Session())
+            {
+                int count = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
+                Assert.NotNull(QueryTraceLogger.LastStatement);
+                
+                t.Parent[] ps = new t.Parent[] { new t.Parent() { Name="Luca", Birthday = DateTime.Now }, new t.Parent() { Name = "Mario", Birthday = DateTime.Now } };
+
+                session.WriteTransaction(tx =>
+                {
+                    ps = tx.AddOrUpdateNodes(ps).ToArray();
+                });
+
+                Assert.Equal(
+                    0, 
+                    session.ExecuteQuery<t.Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
+
+                session.LinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[0], ps[1]);
+
+                Assert.Equal(
+                    1,
+                    session.ExecuteQuery<Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
+
+                session.LinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[1], ps[0]);
+                session.LinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[1], ps[0]);
+
+                Assert.Equal(
+                    2,
+                    session.ExecuteQuery<Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
+
+                List<Person> people = session.ExecuteQuery<Person>(
+                    p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()} return {p.Symbols.First()}").ToList();
+
+                session.UnlinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[0], ps[1]);
+
+                Assert.Equal(
+                    1,
+                    session.ExecuteQuery<Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
+
+                session.UnlinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[1], ps[0]);
+
+                Assert.Equal(
+                    0,
+                    session.ExecuteQuery<Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
+
+                session.WriteTransaction(tx =>
+                {
+                    tx.DeleteNodes(ps);
                 });
 
                 int newcount = session.Run($"MATCH ()-[p]-() RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();

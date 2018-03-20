@@ -10,6 +10,7 @@ using OMnG;
 using N4pper.Queryable;
 using System.Reflection;
 using System.Collections;
+using qu = N4pper.QueryUtils;
 
 namespace N4pper
 {
@@ -17,6 +18,30 @@ namespace N4pper
     {
         #region helpers
 
+        internal static Dictionary<string, object> FixParameters(IDictionary<string, object> param)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+
+            if (param == null)
+                return result;
+
+            foreach (KeyValuePair<string, object> kv in param)
+            {
+                if (kv.Value == null)
+                    result.Add(kv.Key, kv.Value);
+                else if (kv.Value.IsDateTime())
+                {
+                    DateTimeOffset d = (DateTime)kv.Value;
+                    result.Add(kv.Key, d.ToUnixTimeMilliseconds());
+                }
+                else if (kv.Value.GetType() == typeof(TimeSpan) || kv.Value.GetType() == typeof(TimeSpan?))
+                    result.Add(kv.Key, ((TimeSpan)kv.Value).TotalMilliseconds);
+                else
+                    result.Add(kv.Key, kv.Value);
+            }
+
+            return result;
+        }
         internal static IDictionary<string, object> GetPropDictionary(object entity)
         {
             if (entity is IEntity)
@@ -77,9 +102,9 @@ namespace N4pper
 
             if (param != null)
                 if (param is IDictionary<string, object>)
-                    return new Statement(query, (IDictionary<string, object>)param);
+                    return new Statement(query, FixParameters((IDictionary<string, object>)param));
                 else
-                    return new Statement(query, param.ToPropDictionary());
+                    return new Statement(query, FixParameters(param.ToPropDictionary()));
             else
                 return new Statement(query);
         }
@@ -308,5 +333,89 @@ namespace N4pper
                 yield return ext.ExecuteQuery<T, T1, T2, T3, T4>(query, map, item);
             }
         }
+
+        #region query builder overrides
+        public static IResultSummary Execute(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, object param = null)
+        {
+            return ext.Execute(query(new qu.QueryBuilder()), param);
+        }
+        public static IEnumerable<IResultSummary> Execute(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, params object[] param)
+        {
+            return ext.Execute(query(new qu.QueryBuilder()), param);
+        }
+
+        public static IQueryable<T> ExecuteQuery<T>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, object param = null)
+        {
+            return ext.ExecuteQuery<T>(query(new qu.QueryBuilder()),param);
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, params object[] param)
+        {
+            return ext.ExecuteQuery<T>(query(new qu.QueryBuilder()), param);
+        }
+
+        public static IEnumerable<T> ExecuteQuery<T, T1>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T> map, object param = null)
+            where T : class, new()
+            where T1 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1>(query(new qu.QueryBuilder()), map, param);
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1>(query(new qu.QueryBuilder()), map, param);
+        }
+
+        public static IEnumerable<T> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T> map, object param = null)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1,T2>(query(new qu.QueryBuilder()), map, param);
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1, T2>(query(new qu.QueryBuilder()), map, param);
+        }
+
+        public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T> map, object param = null)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1, T2,T3>(query(new qu.QueryBuilder()), map, param);
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1, T2, T3>(query(new qu.QueryBuilder()), map, param);
+        }
+
+        public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T4, T> map, object param = null)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+            where T4 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1, T2, T3, T4>(query(new qu.QueryBuilder()), map, param);
+        }
+        public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
+            where T : class, new()
+            where T1 : class, new()
+            where T2 : class, new()
+            where T3 : class, new()
+            where T4 : class, new()
+        {
+            return ext.ExecuteQuery<T, T1, T2, T3, T4>(query(new qu.QueryBuilder()), map, param);
+        }
+        #endregion
     }
 }

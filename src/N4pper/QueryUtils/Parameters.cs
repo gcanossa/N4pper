@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OMnG;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +22,9 @@ namespace N4pper.QueryUtils
         {
             foreach (string key in Mappings)
             {
-                if (entity.Props.ContainsKey(key))
+                if (entity.Props.ContainsKey(key) && (
+                    entity.Props[key] == null || 
+                    !entity.Props[key].IsDateTime() && entity.Props[key].GetType() != typeof(TimeSpan) && entity.Props[key].GetType() != typeof(TimeSpan?)))
                     entity.Props[key] = new Parameter($"{key}{Suffix}");
             }
         }
@@ -32,7 +35,9 @@ namespace N4pper.QueryUtils
             Dictionary<string, object> values = new Dictionary<string, object>();
             foreach (string key in Mappings)
             {
-                if (original.ContainsKey(key))
+                if (original.ContainsKey(key) && 
+                    (original[key]==null || 
+                    !original[key].IsDateTime() && original[key].GetType()!=typeof(TimeSpan) && original[key].GetType() != typeof(TimeSpan?)))
                     values.Add($"{key}{Suffix}", original[key]);
             }
 

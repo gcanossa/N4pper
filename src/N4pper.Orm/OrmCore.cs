@@ -325,8 +325,8 @@ namespace N4pper.Orm
         
         public static void LinkNodes<S, TRel, D>(this IStatementRunner ext, S source, D destination)
             where TRel : class
-            where S : class, new()
-            where D : class, new()
+            where S : class
+            where D : class
         {
             if (!OrmCoreTypes.KnownTypes.ContainsKey(typeof(S)))
                 throw new InvalidOperationException($"type {typeof(S).FullName} is unknown");
@@ -371,8 +371,8 @@ namespace N4pper.Orm
 
         public static void UnlinkNodes<S, TRel, D>(this IStatementRunner ext, S source, D destination)
             where TRel : class
-            where S : class, new()
-            where D : class, new()
+            where S : class
+            where D : class
         {
             if (!OrmCoreTypes.KnownTypes.ContainsKey(typeof(S)))
                 throw new InvalidOperationException($"type {typeof(S).FullName} is unknown");

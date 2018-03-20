@@ -34,15 +34,20 @@ namespace N4pper.Queryable
             {
                 IRecord r = records.FirstOrDefault();
 
-                if (r == null)
+                if (terminal.Method.Name.StartsWith("First"))
                 {
-                    if (terminal.Method.Name.EndsWith("Default"))
-                        return ObjectExtensions.GetDefault(typeResult);
-                    else
-                        throw new ArgumentOutOfRangeException(nameof(records), "The collection is empty");
-                }
+                    if (r == null)
+                    {
+                        if (terminal.Method.Name.EndsWith("Default"))
+                            return ObjectExtensions.GetDefault(typeResult);
+                        else
+                            throw new ArgumentOutOfRangeException(nameof(records), "The collection is empty");
+                    }
 
-                return mapper(r, typeResult);
+                    return mapper(r, typeResult);
+                }
+                else
+                    return Convert.ChangeType(r.Values[r.Keys[0]], terminal.Type);
             }
             else
             {
