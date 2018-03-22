@@ -6,7 +6,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace N4pper.Queryable
+namespace N4pper.Queryable.Translators
 {
     internal abstract class QueryPartTranslatorBase : ExpressionVisitor
     {

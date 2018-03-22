@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using q = System.Linq.Queryable;
 
-namespace N4pper.Queryable
+namespace N4pper.Queryable.Translators
 {
     internal class WhereQueryTranslator : QueryPartTranslatorBase
     {

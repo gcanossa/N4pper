@@ -23,6 +23,8 @@ namespace UnitTest
             sc.AddSingleton<IConfigurationRoot>(Configuration);
             sc.AddN4pper()
                 .AddGraphContext<TestContext>(Configuration.GetConnectionString("DefaultConnection"));
+            sc.AddN4pper()
+                .AddGraphContext<GlobalTestContext>(Configuration.GetConnectionString("DefaultConnection"));
 
             sc.AddTransient<IQueryTracer, QueryTraceLogger>();
 
@@ -32,6 +34,24 @@ namespace UnitTest
             //sc.AddTransient<IDriver>(s => GraphDatabase.Driver(new Uri(Configuration.GetConnectionString("DefaultConnection")), AuthTokens.None));
 
             sc.AddLogging(builder => builder.AddDebug().AddConsole());
+        }
+
+        public class GlobalTestContext : GraphContext
+        {
+            public GlobalTestContext(DriverProvider<TestContext> provider) : base(provider)
+            {
+            }
+            protected override void OnModelCreating(GraphModelBuilder builder)
+            {
+                base.OnModelCreating(builder);
+
+                builder.Entity<TestModel.Book>();
+                builder.Entity<TestModel.Chapter>();
+                builder.Entity<TestModel.Section>();
+                builder.Entity<TestModel.User>();
+                builder.Entity<TestModel.Exercise>();
+                builder.Entity<TestModel.Explaination>();
+            }
         }
 
         public class TestContext : GraphContext

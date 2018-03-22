@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Text;
 using q = System.Linq.Queryable;
 
-namespace N4pper.Queryable
+namespace N4pper.Queryable.Translators
 {
     internal class TakeParamSelector : ExpressionVisitor
     {

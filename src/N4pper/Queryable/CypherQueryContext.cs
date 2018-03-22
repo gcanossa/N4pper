@@ -1,4 +1,5 @@
-﻿using Neo4j.Driver.V1;
+﻿using N4pper.Queryable.CypherSintaxHelpers;
+using Neo4j.Driver.V1;
 using OMnG;
 using System;
 using System.Collections.Generic;
@@ -22,11 +23,18 @@ namespace N4pper.Queryable
 
             expression = Evaluator.PartialEval(expression);
 
-            (string firstVar, IEnumerable<string> otherVars) = GetFirstCypherVariableName(statement);
+            string statementText = Regex.Replace(statement.Text, "RETURN", "WITH", RegexOptions.IgnoreCase);
+            PipeVariableRewriter rewriter = new PipeVariableRewriter();
+            statementText = rewriter.Tokenize(statementText).Rebuild();
+
+            (string firstVar, IEnumerable<string> otherVars) = GetFirstCypherVariableName(statementText);
 
             string queryText = tranaslator.Translate(expression, out MethodCallExpression terminal, out int? countFromBegin, out typeResult, firstVar, otherVars);
-                        
-            IStatementResult result = runner.Run($"{Regex.Replace(statement.Text, "RETURN", "WITH", RegexOptions.IgnoreCase)} {queryText}", statement.Parameters);
+            queryText = Regex.Replace($"{statementText} {queryText}", "RETURN", "WITH", RegexOptions.IgnoreCase);
+            queryText = rewriter.Tokenize(queryText).Rebuild();
+            queryText = Regex.Replace(queryText, "WITH(.+?)$", "RETURN$1", RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
+
+            IStatementResult result = runner.Run(queryText, statement.Parameters);
 
             IQueryable<IRecord> records = result.ToList().AsQueryable();
 
@@ -76,43 +84,26 @@ namespace N4pper.Queryable
             }
         }
         
-        private static (string, IEnumerable<string>) GetFirstCypherVariableName(Statement statement)
+        private static (string, IEnumerable<string>) GetFirstCypherVariableName(string statement)
         {
-            int withIdx = Regex.Match(statement.Text, "WITH\\s+.+$", RegexOptions.RightToLeft | RegexOptions.IgnoreCase).Index;
-            int returnIdx = Regex.Match(statement.Text, "RETURN\\s+.+$", RegexOptions.RightToLeft | RegexOptions.IgnoreCase).Index;
+            int withIdx = Regex.Match(statement, "WITH\\s+.+?$", RegexOptions.RightToLeft | RegexOptions.IgnoreCase).Index;
             string name;
             IEnumerable<string> others;
-            if (withIdx>returnIdx)
+
+            GroupCollection gc = Regex.Match(statement.Substring(withIdx), "WITH\\s+(([^,]+,?)+)\\w?.*", RegexOptions.IgnoreCase).Groups;
+            List<string> m = Regex.Matches(gc[1].Value, "[^,]+").Select(p =>
             {
-                GroupCollection gc = Regex.Match(statement.Text.Substring(withIdx), "RETURN\\s+(([^,]+,?)+)\\w?.*", RegexOptions.IgnoreCase).Groups;
-                List<string> m = Regex.Matches(gc[1].Value, "[^,]+").Select(p =>
-                {
-                    Match tmp = Regex.Match(p.Value, "AS\\s+(\\w+)", RegexOptions.IgnoreCase);
-                    if (tmp.Success)
-                        return tmp.Groups[1].Value;
-                    else
-                        return p.Value;
-                }).ToList();
-                name = m[0];
-                others = m.Skip(1);
-            }
-            else
-            {
-                GroupCollection gc = Regex.Match(statement.Text.Substring(withIdx), "RETURN\\s+(([^,]+,?)+)\\w?.*", RegexOptions.IgnoreCase).Groups;
-                List<string> m = Regex.Matches(gc[1].Value, "[^,]+").Select(p=> 
-                {
-                    Match tmp = Regex.Match(p.Value, "AS\\s+(\\w+)", RegexOptions.IgnoreCase);
-                    if (tmp.Success)
-                        return tmp.Groups[1].Value;
-                    else
-                        return p.Value;
-                }).ToList();
-                name = m[0];
-                others = m.Skip(1);
-            }
+                Match tmp = Regex.Match(p.Value, "AS\\s+(\\w+)", RegexOptions.IgnoreCase);
+                if (tmp.Success)
+                    return tmp.Groups[1].Value;
+                else
+                    return p.Value;
+            }).ToList();
+            name = m[0];
+            others = m.Skip(1);
 
             if (name == "*")
-                throw new ArgumentException($"A return variable must be specified. '*' not allowed for statement. '{statement.Text}'", nameof(statement));
+                throw new ArgumentException($"A return variable must be specified. '*' not allowed for statement. '{statement}'", nameof(statement));
 
             return (name, others);
         }

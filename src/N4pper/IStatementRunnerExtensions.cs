@@ -161,8 +161,6 @@ namespace N4pper
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
@@ -184,8 +182,6 @@ namespace N4pper
                 });
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, string query, Func<T, T1, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
         {
             if (param == null || param.Length == 0)
                 yield break;
@@ -197,9 +193,6 @@ namespace N4pper
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
@@ -224,9 +217,6 @@ namespace N4pper
                 });
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, string query, Func<T, T1, T2, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
         {
             if (param == null || param.Length == 0)
                 yield break;
@@ -238,10 +228,6 @@ namespace N4pper
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
@@ -269,10 +255,6 @@ namespace N4pper
                 });
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
         {
             if (param == null || param.Length == 0)
                 yield break;
@@ -284,11 +266,6 @@ namespace N4pper
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-            where T4 : class, new()
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
@@ -319,11 +296,6 @@ namespace N4pper
                 });
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, string query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-            where T4 : class, new()
         {
             if (param == null || param.Length == 0)
                 yield break;
@@ -354,65 +326,37 @@ namespace N4pper
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
         {
             return ext.ExecuteQuery<T, T1>(query(new qu.QueryBuilder()), map, param);
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
         {
             return ext.ExecuteQuery<T, T1>(query(new qu.QueryBuilder()), map, param);
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
         {
             return ext.ExecuteQuery<T, T1,T2>(query(new qu.QueryBuilder()), map, param);
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
         {
             return ext.ExecuteQuery<T, T1, T2>(query(new qu.QueryBuilder()), map, param);
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
         {
             return ext.ExecuteQuery<T, T1, T2,T3>(query(new qu.QueryBuilder()), map, param);
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
         {
             return ext.ExecuteQuery<T, T1, T2, T3>(query(new qu.QueryBuilder()), map, param);
         }
 
         public static IEnumerable<T> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T4, T> map, object param = null)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-            where T4 : class, new()
         {
             return ext.ExecuteQuery<T, T1, T2, T3, T4>(query(new qu.QueryBuilder()), map, param);
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T, T1, T2, T3, T4>(this IStatementRunner ext, Func<qu.IQueryBuilder, string> query, Func<T, T1, T2, T3, T4, T> map, params object[] param)
-            where T : class, new()
-            where T1 : class, new()
-            where T2 : class, new()
-            where T3 : class, new()
-            where T4 : class, new()
         {
             return ext.ExecuteQuery<T, T1, T2, T3, T4>(query(new qu.QueryBuilder()), map, param);
         }
