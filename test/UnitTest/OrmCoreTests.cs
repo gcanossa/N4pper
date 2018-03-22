@@ -96,11 +96,21 @@ namespace UnitTest
             public long Id { get; set; }
         }
 
-        public class TestQueryTracer : IQueryTracer
+        public class TestQueryTracer : IQueryProfiler
         {
             public void Trace(string query)
             {
                 Queries.Push(query);
+            }
+
+            public void Increment()
+            {
+                
+            }
+
+            public Action<Exception> Mark()
+            {
+                return null;
             }
 
             public Stack<string> Queries { get; set; } = new Stack<string>();
@@ -265,14 +275,14 @@ namespace UnitTest
                     0, 
                     session.ExecuteQuery<t.Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
 
-                session.LinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[0], ps[1]);
+                session.LinkNodes<t.IRelatesTo, t.Person, t.Person>(ps[0], ps[1]);
 
                 Assert.Equal(
                     1,
                     session.ExecuteQuery<Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
 
-                session.LinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[1], ps[0]);
-                session.LinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[1], ps[0]);
+                session.LinkNodes<t.IRelatesTo, t.Person, t.Person>(ps[1], ps[0]);
+                session.LinkNodes<t.IRelatesTo, t.Person, t.Person>(ps[1], ps[0]);
 
                 Assert.Equal(
                     2,
@@ -281,13 +291,13 @@ namespace UnitTest
                 List<Person> people = session.ExecuteQuery<Person>(
                     p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()} return {p.Symbols.First()}").ToList();
 
-                session.UnlinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[0], ps[1]);
+                session.UnlinkNodes<t.IRelatesTo, t.Person, t.Person>(ps[0], ps[1]);
 
                 Assert.Equal(
                     1,
                     session.ExecuteQuery<Person>(p => $"MATCH {p.Node<t.Person>(p.Symbol())}-{p.Rel<t.IRelatesTo>(p.Symbol())}->{p.Node<t.Person>(p.Symbol())} return {p.Symbols.First()}").Count());
 
-                session.UnlinkNodes<t.Person, t.IRelatesTo, t.Person>(ps[1], ps[0]);
+                session.UnlinkNodes<t.IRelatesTo, t.Person, t.Person>(ps[1], ps[0]);
 
                 Assert.Equal(
                     0,

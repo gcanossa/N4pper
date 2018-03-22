@@ -66,42 +66,47 @@ namespace N4pper.Decorators
         public override IStatementResult Run(Statement statement)
         {
             Manager.TraceStatement(statement.Text);
-            return base.Run(statement);
+            return Manager.ProfileQuery(()=>base.Run(statement));
         }
         public override IStatementResult Run(string statement)
         {
             Manager.TraceStatement(statement);
-            return base.Run(statement);
+            return Manager.ProfileQuery(() => base.Run(statement));
         }
         public override IStatementResult Run(string statement, IDictionary<string, object> parameters)
         {
             Manager.TraceStatement(statement);
-            return base.Run(statement, parameters);
+            return Manager.ProfileQuery(() => base.Run(statement, parameters));
         }
         public override IStatementResult Run(string statement, object parameters)
         {
             Manager.TraceStatement(statement);
-            return base.Run(statement, parameters);
+            return Manager.ProfileQuery(() => base.Run(statement, parameters));
         }
         public override Task<IStatementResultCursor> RunAsync(Statement statement)
         {
             Manager.TraceStatement(statement.Text);
-            return base.RunAsync(statement);
+            return Manager.ProfileQueryAsync(() => base.RunAsync(statement));
         }
         public override Task<IStatementResultCursor> RunAsync(string statement)
         {
             Manager.TraceStatement(statement);
-            return base.RunAsync(statement);
+            return Manager.ProfileQueryAsync(() => base.RunAsync(statement));
         }
         public override Task<IStatementResultCursor> RunAsync(string statement, IDictionary<string, object> parameters)
         {
             Manager.TraceStatement(statement);
-            return base.RunAsync(statement, parameters);
+            return Manager.ProfileQueryAsync(() => base.RunAsync(statement, parameters));
         }
         public override Task<IStatementResultCursor> RunAsync(string statement, object parameters)
         {
             Manager.TraceStatement(statement);
-            return base.RunAsync(statement, parameters);
+            return Manager.ProfileQueryAsync(() => base.RunAsync(statement, parameters));
+        }
+        public override void Dispose()
+        {
+            base.Dispose();
+            Context.Dispose();
         }
     }
 }

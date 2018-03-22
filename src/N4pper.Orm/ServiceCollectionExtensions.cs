@@ -66,8 +66,8 @@ namespace N4pper.Orm
                 ext.AddSingleton<N4pperOptions>();
             if (!ext.Any(p => p.ServiceType == typeof(N4pperManager)))
                 ext.AddSingleton<N4pperManager>();
-            if(!ext.Any(p=>p.ServiceType == typeof(IQueryTracer)))
-                ext.AddTransient<IQueryTracer>(provider => null);
+            if(!ext.Any(p=>p.ServiceType == typeof(IQueryProfiler)))
+                ext.AddTransient<IQueryProfiler>(provider => null);
 
             return new GraphContextConfigurator(ext);
         }

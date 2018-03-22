@@ -26,7 +26,7 @@ namespace UnitTest
             sc.AddN4pper()
                 .AddGraphContext<GlobalTestContext>(Configuration.GetConnectionString("DefaultConnection"));
 
-            sc.AddTransient<IQueryTracer, QueryTraceLogger>();
+            sc.AddTransient<IQueryProfiler, QueryTraceLogger>();
 
             sc.AddTransient<Neo4jServer_DriverBuilder>(provider => new Neo4jServer_DriverBuilder(Configuration));
             //sc.AddTransient<TestContext>();

@@ -16,7 +16,7 @@ namespace N4pper.QueryUtils
 
         public INode Node<T>(Symbol symbol, object param) where T : class
         {
-            Dictionary<string, object> p = param?.SelectPrimitiveTypesProperties();
+            Dictionary<string, object> p = param?.ToPropDictionary()?.SelectPrimitiveTypesProperties();
 
             return Node<T>(symbol, p);
         }
@@ -46,7 +46,7 @@ namespace N4pper.QueryUtils
 
         public IRel Rel<T>(Symbol symbol, object param) where T : class
         {
-            Dictionary<string, object> p = param?.SelectPrimitiveTypesProperties();
+            Dictionary<string, object> p = param?.ToPropDictionary()?.SelectPrimitiveTypesProperties();
 
             return Rel<T>(symbol, p);
         }

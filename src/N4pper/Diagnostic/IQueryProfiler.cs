@@ -4,8 +4,10 @@ using System.Text;
 
 namespace N4pper.Diagnostic
 {
-    public interface IQueryTracer
+    public interface IQueryProfiler
     {
+        void Increment();
+        Action<Exception> Mark();
         void Trace(string query);
     }
 }

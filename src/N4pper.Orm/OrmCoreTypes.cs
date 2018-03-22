@@ -10,7 +10,45 @@ namespace N4pper.Orm
 {
     internal static class OrmCoreTypes
     {
+        internal static Dictionary<Type, MethodInfo> AddNode { get; } = new Dictionary<Type, MethodInfo>();
+        internal static Dictionary<Type, MethodInfo> DelNode { get; } = new Dictionary<Type, MethodInfo>();
+        internal static Dictionary<Type, MethodInfo> CopyProps { get; } = new Dictionary<Type, MethodInfo>();
         internal static Dictionary<Type, IEnumerable<string>> KnownTypes { get; private set; } = new Dictionary<Type, IEnumerable<string>>();
+
+
+        private static readonly MethodInfo _addNode = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.AddOrUpdateNode) && p.GetGenericArguments().Length == 1);
+        private static readonly MethodInfo _delNode = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.DeleteNode));
+        private static readonly MethodInfo _copyProps = typeof(ObjectExtensions).GetMethods().First(p => p.Name == nameof(ObjectExtensions.CopyProperties) && p.GetParameters()[1].ParameterType == typeof(Dictionary<string, object>));
+
+        internal static bool AreEqual(object a, object b)
+        {
+            if (a == null || b == null)
+                return false;
+            else if (!KnownTypes.ContainsKey(a.GetType()) || !KnownTypes.ContainsKey(b.GetType()))
+                return false;
+            else
+            {
+                if (!a.GetType().IsAssignableFrom(b.GetType()) &&
+                    !b.GetType().IsAssignableFrom(a.GetType()) &&
+                    a.GetType().GetInterfaces().Intersect(b.GetType().GetInterfaces()).Count() == 0)
+                    return false;
+
+                Dictionary<string, object> _a = a.ToPropDictionary().SelectProperties(KnownTypes[a.GetType()]);
+                Dictionary<string, object> _b = b.ToPropDictionary().SelectProperties(KnownTypes[b.GetType()]);
+
+                if (_a.Count != _b.Count)
+                    return false;
+                else
+                {
+                    foreach (KeyValuePair<string, object> kv in _a)
+                    {
+                        if (kv.Value==null || _b[kv.Key]==null || !kv.Value.Equals(_b[kv.Key]))
+                            return false;
+                    }
+                    return true;
+                }
+            }
+        }
 
         private static void ValidateKey(Type type, IEnumerable<string> keyProps)
         {
@@ -26,8 +64,14 @@ namespace N4pper.Orm
         private static void AddType(Type type, IEnumerable<string> keyProps)
         {
             if (!KnownTypes.ContainsKey(type))
+            {
                 KnownTypes.Add(type, keyProps);
-            else if(string.Join(",",KnownTypes[type].OrderBy(p=>p)) != string.Join(",", keyProps.OrderBy(p => p)))
+
+                AddNode.Add(type, _addNode.MakeGenericMethod(type));
+                DelNode.Add(type, _delNode.MakeGenericMethod(type));
+                CopyProps.Add(type, _copyProps.MakeGenericMethod(type));
+            }
+            else if (string.Join(",", KnownTypes[type].OrderBy(p => p)) != string.Join(",", keyProps.OrderBy(p => p)))
                 throw new InvalidOperationException($"type {type.FullName} already managed with a different key: '{string.Join(",", KnownTypes[type].OrderBy(p => p))}'");
         }
 

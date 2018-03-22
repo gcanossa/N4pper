@@ -1,6 +1,7 @@
 ﻿using AsIKnow.XUnitExtensions;
 using N4pper;
 using N4pper.Orm;
+using N4pper.Orm.Entities;
 using Neo4j.Driver.V1;
 using System;
 using System.Collections.Generic;
@@ -22,12 +23,11 @@ namespace UnitTest
             Fixture = fixture;
         }
 
-        private (IDriver, N4pperManager) SetUp()
+        private GraphContext SetUp()
         {
-            return (
-                Fixture.GetService<Neo4jFixture.GlobalTestContext>().Driver,
-                Fixture.GetService<N4pperManager>()
-                );
+            return 
+                Fixture.GetService<Neo4jFixture.GlobalTestContext>()
+                ;
         }
 
         private int GetEntityNodesCount(ISession session)
@@ -35,16 +35,16 @@ namespace UnitTest
             return session.Run($"MATCH (p) WHERE NOT p:{N4pper.Constants.GlobalIdentityNodeLabel} RETURN COUNT(p)").Select(x => x.Values[x.Keys[0]].As<int>()).First();
         }
 
-        private void TestBody(Action<ISession> body)
+        private void TestBody(Action<ISession, GraphContext> body)
         {
-            (IDriver driver, N4pperManager mgr) = SetUp();
+            GraphContext ctx = SetUp();
 
-            using (ISession session = driver.Session())
+            using (ISession session = ctx.Driver.Session())
             {
                 int count = GetEntityNodesCount(session);
                 try
                 {
-                    body(session);
+                    body(session, ctx);
                 }
                 finally
                 {
@@ -58,14 +58,14 @@ namespace UnitTest
         [Fact(DisplayName = nameof(NodeCreation))]
         public void NodeCreation()
         {
-            TestBody(session=> 
+            TestBody((session, ctx)=> 
             {
                 var book = session.AddOrUpdateNode(new Book { Name = "Dune", Index=0 });
                 var chapter1 = session.AddOrUpdateNode(new Chapter { Name = "Capitolo 1", Index = 0 });
                 var chapter2 = session.AddOrUpdateNode(new Chapter { Name = "Capitolo 2", Index = 1 });
 
-                session.LinkNodes<Book,Links.RelatesTo, Chapter>(book, chapter1);
-                session.LinkNodes<Book, Links.RelatesTo, Chapter>(book, chapter2);
+                session.LinkNodes<Links.RelatesTo, Book, Chapter>(book, chapter1);
+                session.LinkNodes<Links.RelatesTo, Book, Chapter>(book, chapter2);
 
                 IEnumerable<Book> tmp = session
                 .ExecuteQuery<Book, IEnumerable<Chapter>>(
@@ -85,11 +85,62 @@ namespace UnitTest
 
                 Assert.Equal(1, tmp.Count());
                 Assert.Equal(2, tmp.First().Chapters.Count());
-                Assert.Equal(tmp.First(), tmp.First().Chapters.First().Book);
+                Assert.Equal(tmp.First().Id, tmp.First().Chapters.First().Book.Id);
 
                 session.DeleteNode(chapter2);
                 session.DeleteNode(chapter1);
                 session.DeleteNode(book);
+            });
+        }
+
+        [TestPriority(0)]
+        [Trait("Category", nameof(GlobalTests))]
+        [Fact(DisplayName = nameof(ManagedCreation))]
+        public void ManagedCreation()
+        {
+            TestBody((session, ctx) =>
+            {
+                var book = new Book { Name = "Dune", Index = 0 };
+                var chapter1 = new Chapter { Name = "Capitolo 1", Index = 0, Book = book };
+                var chapter2 = new Chapter { Name = "Capitolo 2", Index = 1, Book = book };
+                book.Chapters = new List<Chapter>() {chapter1, chapter2 };
+
+                ctx.Add(chapter2);
+
+                ctx.SaveChanges(session);
+
+                var chapter3 = new Chapter { Name = "Capitolo 3", Index = 1, Book = book };
+                book.Chapters = new List<Chapter>() { chapter1, chapter3 };
+
+                ctx.SaveChanges(session);
+
+
+                IEnumerable<Book> tmp = session
+                .ExecuteQuery<Book, IEnumerable<Chapter>>(
+                    p => $"match {p.Node<Book>(p.Symbol("p"))._(p.Rel<Connection>(p.Symbol()))._V(p.Node<Chapter>(p.Symbol("q")))} return p, reverse(collect(q))",
+                    (b, c) =>
+                    {
+                        b.Chapters = new List<Chapter>();
+
+                        b.Chapters.AddRange(c);
+                        foreach (Chapter item in c)
+                        {
+                            item.Book = b;
+                        }
+
+                        return b;
+                    }).ToList();
+
+                Assert.Equal(1, tmp.Count());
+                Assert.Equal(2, tmp.First().Chapters.Count());
+                Assert.Equal(tmp.First().Id, tmp.First().Chapters.First().Book.Id);
+
+                ctx.Remove(chapter3);
+                ctx.Remove(chapter2);
+                ctx.Remove(chapter1);
+                ctx.Remove(book);
+
+                ctx.SaveChanges(session);
             });
         }
     }

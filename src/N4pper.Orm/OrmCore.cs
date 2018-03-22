@@ -44,7 +44,7 @@ namespace N4pper.Orm
             if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
                 uuid = new Symbol();
-                UniqueIdStatement id = new UniqueIdStatement(uuid);
+                SequenceStatement id = new SequenceStatement(N4pper.Constants.GlobalIdentityNodeLabel, uuid);
 
                 sb.Append(id);
                 sb.Append(" ");
@@ -157,7 +157,7 @@ namespace N4pper.Orm
             if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
                 uuid = new Symbol();
-                UniqueIdStatement id = new UniqueIdStatement(uuid);
+                SequenceStatement id = new SequenceStatement(N4pper.Constants.GlobalIdentityNodeLabel, uuid);
 
                 sb.Append(id);
                 sb.Append(" ");
@@ -323,7 +323,7 @@ namespace N4pper.Orm
 
         #endregion
         
-        public static void LinkNodes<S, TRel, D>(this IStatementRunner ext, S source, D destination)
+        public static void LinkNodes<TRel, S, D>(this IStatementRunner ext, S source, D destination)
             where TRel : class
             where S : class
             where D : class
@@ -369,7 +369,7 @@ namespace N4pper.Orm
             ext.Execute(sb.ToString(), parameters);
         }
 
-        public static void UnlinkNodes<S, TRel, D>(this IStatementRunner ext, S source, D destination)
+        public static void UnlinkNodes<TRel, S, D>(this IStatementRunner ext, S source, D destination)
             where TRel : class
             where S : class
             where D : class
