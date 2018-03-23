@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using N4pper.Queryable;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
@@ -26,7 +27,7 @@ namespace N4pper.Orm.Queryable
             Runner = runner ?? throw new ArgumentNullException(nameof(runner));
             Mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
 
-            Provider = new CypherQueryProvider(runner, ()=> { BuildStatement(); return Statement; }, mapper);
+            Provider = new CypherQueryProvider(runner, () => { BuildStatement(); return Statement; }, mapper);
             Expression = Expression.Constant(this);
         }
 
@@ -79,30 +80,108 @@ namespace N4pper.Orm.Queryable
         }
         #endregion
 
+        private string RemoveAsStatement(string statement)
+        {
+            return Regex.Replace(statement, @"\s+AS\s+.+$", "", RegexOptions.IgnoreCase);
+        }
+
+        private string BuildMatchStatement()
+        {
+            StringBuilder builder = new StringBuilder();
+
+            builder.Append($"MATCH {new Node(FirstSymbol, typeof(TData)).BuildForQuery()}");
+            Stack<Symbol> symbols = new Stack<Symbol>();
+            symbols.Push(FirstSymbol);
+            foreach (IncludePathTree item in Paths.Branches)
+            {
+                builder.Append(" OPTIONAL MATCH ");
+                RecursiveBuildMatchStatement(item, builder, symbols);
+            }
+            symbols.Pop();
+
+            return builder.ToString();
+        }
+        private void RecursiveBuildMatchStatement(IncludePathTree tree, StringBuilder builder, Stack<Symbol> symbols)
+        {
+            Type t = tree.Path.IsEnumerable ? tree.Path.Property.PropertyType.GetGenericArguments()[0] : tree.Path.Property.PropertyType;
+            builder.Append(
+                new Node(symbols.Peek())
+                ._(type:typeof(Entities.Connection), props: new { PropertyName = tree.Path.Property.Name }.ToPropDictionary())
+                ._V(tree.Path.Symbol, t).BuildForQuery()
+                );
+            symbols.Push(tree.Path.Symbol);
+            foreach (IncludePathTree item in tree.Branches)
+            {
+                builder.Append(" OPTIONAL MATCH ");
+                RecursiveBuildMatchStatement(item, builder, symbols);
+            }
+            symbols.Pop();
+        }
+        private string BuildReturnStatement()
+        {
+            StringBuilder builder = new StringBuilder();
+
+            Stack<Symbol> symbols = new Stack<Symbol>();
+
+            foreach (IncludePathTree item in Paths.Branches)
+            {
+                RecursiveBuildReturnStatement(item, builder, symbols);
+            }
+
+            builder.Append($" RETURN {FirstSymbol}");
+            if (Paths.Branches.Count > 0)
+                builder.Append(", [");
+
+            for (int i = 0; i < Paths.Branches.Count; i++)
+            {
+                builder.Append($"{symbols.Pop()},");
+            }
+            builder.Remove(builder.Length - 1, 1);
+
+            if (Paths.Branches.Count > 0)
+                builder.Append($"] AS {new Symbol()}");
+
+            return builder.ToString();
+        }
+        private void RecursiveBuildReturnStatement(IncludePathTree tree, StringBuilder builder, Stack<Symbol> symbols)
+        {
+            foreach (IncludePathTree item in tree.Branches)
+            {
+                RecursiveBuildReturnStatement(item, builder, symbols);
+            }
+
+            builder.Append($" WITH *,");
+            if (tree.Path.IsEnumerable)
+                builder.Append($"reverse(collect(");
+            if (tree.Branches.Count > 0)
+                builder.Append("[");
+
+            builder.Append(tree.Path.Symbol);
+            for (int i = 0; i < tree.Branches.Count; i++)
+            {
+                builder.Append($",{symbols.Pop()}");
+            }
+
+            if (tree.Branches.Count > 0)
+                builder.Append("]");
+            if (tree.Path.IsEnumerable)
+                builder.Append($"))");
+
+            symbols.Push(new Symbol());
+            builder.Append($" AS {symbols.Peek()}");
+        }
+
         protected void BuildStatement()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append($"MATCH {new Node(FirstSymbol, typeof(TData))} ");
 
-            foreach (StringBuilder item in Builders)
-            {
-                sb.Append(item.ToString());
-                sb.Append(" ");
-            }
-
-            sb.Append($"RETURN {FirstSymbol}");
-
-            foreach (string item in ReturnStatements.SelectMany(p=>p))
-            {
-                sb.Append(",");
-                sb.Append(item);
-            }
-
+            sb.Append(BuildMatchStatement());
+            sb.Append(BuildReturnStatement());
+            
             Statement = new Statement(sb.ToString());
         }
 
-        protected List<StringBuilder> Builders { get; } = new List<StringBuilder>();
-        protected List<List<string>> ReturnStatements { get; } = new List<List<string>>();
+        protected IncludePathTree Paths { get; } = new IncludePathTree();
         protected Symbol FirstSymbol { get; } = new Symbol();
 
         protected IInclude<D> StartNewInclude<D>(IEnumerable<string> props, bool isEnumerable) where D : class
@@ -112,25 +191,32 @@ namespace N4pper.Orm.Queryable
             PropertyInfo pinfo = typeof(TData).GetProperty(props.First());
 
             Symbol to = new Symbol();
-            Rel rel = new Rel(
-                null,
-                typeof(Entities.Connection),
-                new { PropertyName = pinfo.Name }.ToPropDictionary());
-            Node node = new Node(to, typeof(D));
+            IncludePathTree newTree = new IncludePathTree()
+            {
+                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to } 
+            };
+
+            newTree = Paths.Add(newTree);
+
+            //Rel rel = new Rel(
+            //    null,
+            //    typeof(Entities.Connection),
+            //    new { PropertyName = pinfo.Name }.ToPropDictionary());
+            //Node node = new Node(to, typeof(D));
             
-            StringBuilder sb = new StringBuilder();
-            Builders.Add(sb);
-            List<string> returns = new List<string>();
-            ReturnStatements.Add(returns);
+            //StringBuilder sb = new StringBuilder();
+            //Builders.Add(sb);
+            //List<string> returns = new List<string>();
+            //ReturnStatements.Add(returns);
 
-            if (isEnumerable)
-                returns.Add($"reverse(collect({to}))");
-            else
-                returns.Add(to);
+            //if (isEnumerable)
+            //    returns.Add($"reverse(collect({to})) as {to}");
+            //else
+            //    returns.Add(to);
 
-            sb.Append($"OPTIONAL MATCH {new Node(FirstSymbol, typeof(TData))}-{rel}->{node}");
+            //sb.Append($"OPTIONAL MATCH {new Node(FirstSymbol, typeof(TData)).BuildForQuery()}-{rel.BuildForQuery()}->{node.BuildForQuery()}");
 
-            return new IncludeQueryBuilder<D>(sb, returns);
+            return new IncludeQueryBuilder<D>(newTree);
         }
 
         public IInclude<D> Include<D>(Expression<Func<TData, D>> expr) where D : class

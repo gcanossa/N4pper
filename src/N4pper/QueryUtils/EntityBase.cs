@@ -24,6 +24,10 @@ namespace N4pper.QueryUtils
         }
 
         public abstract string Build();
+        public virtual string BuildForQuery()
+        {
+            return Build();
+        }
 
         protected virtual string HandleValue(object value)
         {

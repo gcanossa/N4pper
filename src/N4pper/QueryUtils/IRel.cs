@@ -8,6 +8,10 @@ namespace N4pper.QueryUtils
     {
         IRel Lengths(int? min = null, int? max = null);
 
+        Symbol Symbol { get; }
+        Type Type { get; }
+        IDictionary<string, object> Props { get; }
+
         string Label { get; }
 
         IRel SetSymbol(Symbol symbol);

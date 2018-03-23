@@ -45,6 +45,24 @@ namespace N4pper.QueryUtils
 
             return sb.ToString();
         }
+        public override string BuildForQuery()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append("(");
+            if (Symbol != null)
+                sb.Append(Symbol);
+
+            if (Type!=null)
+                sb.Append($":`{TypeExtensions.GetLabel(Type)}`");
+
+            if (Props.Count > 0)
+                sb.Append(SerializeProps());
+
+            sb.Append(")");
+
+            return sb.ToString();
+        }
 
         public RelPath _(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {

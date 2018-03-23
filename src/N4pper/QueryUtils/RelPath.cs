@@ -64,5 +64,9 @@ namespace N4pper.QueryUtils
         {
             return $"{Previous}{Edge.ToCypherString()}{Rel}";
         }
+        public override string BuildForQuery()
+        {
+            return $"{Previous.BuildForQuery()}{Edge.ToCypherString()}{Rel.BuildForQuery()}";
+        }
     }
 }

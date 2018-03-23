@@ -8,6 +8,10 @@ namespace N4pper.QueryUtils
     {
         string Labels { get; }
 
+        Symbol Symbol { get; }
+        Type Type { get; }
+        IDictionary<string, object> Props { get; }
+
         INode SetSymbol(Symbol symbol);
         INode SetType(Type type);
 

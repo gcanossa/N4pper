@@ -22,6 +22,10 @@ namespace N4pper.QueryUtils
             Symbol tmp = new Symbol();
             return $"MERGE ({tmp}:{SequenceName}) ON CREATE SET {tmp}.count = 1 ON MATCH SET {tmp}.count = {tmp}.count + 1 WITH {tmp}.count AS {Id}";
         }
+        public string BuildForQuery()
+        {
+            return Build();
+        }
         public override string ToString()
         {
             return Build();

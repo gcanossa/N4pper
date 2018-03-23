@@ -7,5 +7,6 @@ namespace N4pper.QueryUtils
     public interface IStatementBuilder
     {
         string Build();
+        string BuildForQuery();
     }
 }

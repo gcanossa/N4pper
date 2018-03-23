@@ -58,6 +58,31 @@ namespace N4pper.QueryUtils
 
             return sb.ToString();
         }
+        public override string BuildForQuery()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("[");
+            if (Symbol != null)
+                sb.Append(Symbol);
+
+            if (Type != null)
+            {
+                foreach (string lbl in TypeExtensions.GetLabels(Type))
+                {
+                    sb.Append($":`{lbl}`|");
+                }
+                sb.Remove(sb.Length - 1, 1);
+            }
+
+            if (PathLength != null)
+                sb.Append(PathLength);
+            if (Props.Count > 0)
+                sb.Append(SerializeProps());
+
+            sb.Append("]");
+
+            return sb.ToString();
+        }
 
         public NodePath _(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {
