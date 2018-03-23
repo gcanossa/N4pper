@@ -29,7 +29,7 @@ namespace N4pper.QueryUtils
             }
         }
 
-        public Dictionary<string, object> Prepare(Dictionary<string, object> original)
+        public Dictionary<string, object> Prepare(IDictionary<string, object> original)
         {
             original = original ?? new Dictionary<string, object>();
             Dictionary<string, object> values = new Dictionary<string, object>();

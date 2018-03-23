@@ -35,11 +35,11 @@ namespace N4pper.QueryUtils
             Node.SetType(type);
             return this;
         }
-        public RelPath _(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null)
+        public RelPath _(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {
             return new RelPath(this, new Rel(symbol, type, props), EdgeType.Any);
         }
-        public RelPath V_(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null)
+        public RelPath V_(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {
             return new RelPath(this, new Rel(symbol, type, props), EdgeType.From);
         }

@@ -6,7 +6,7 @@ namespace N4pper.QueryUtils
 {
     public interface IEntity
     {
-        Dictionary<string, object> Props { get; }
+        IDictionary<string, object> Props { get; }
 
         Parameters Parametrize(string suffix = null);
         IEntity Parametrize(Parameters p);

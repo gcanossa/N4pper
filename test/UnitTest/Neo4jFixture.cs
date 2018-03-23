@@ -10,6 +10,7 @@ using N4pper.Diagnostic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using N4pper.Orm;
+using N4pper.Orm.Design;
 
 namespace UnitTest
 {
@@ -45,10 +46,12 @@ namespace UnitTest
             {
                 base.OnModelCreating(builder);
 
-                builder.Entity<TestModel.Book>();
+                builder.Entity<TestModel.Book>()
+                    .ConnectedMany(p => p.Chapters, p => p.Book);
                 builder.Entity<TestModel.Chapter>();
                 builder.Entity<TestModel.Section>();
-                builder.Entity<TestModel.User>();
+                builder.Entity<TestModel.User>()
+                    .Ignore(p=>p.Age);
                 builder.Entity<TestModel.Exercise>();
                 builder.Entity<TestModel.Explaination>();
             }

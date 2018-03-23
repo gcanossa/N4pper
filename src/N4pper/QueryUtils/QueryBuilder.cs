@@ -16,12 +16,12 @@ namespace N4pper.QueryUtils
 
         public INode Node<T>(Symbol symbol, object param) where T : class
         {
-            Dictionary<string, object> p = param?.ToPropDictionary()?.SelectPrimitiveTypesProperties();
+            IDictionary<string, object> p = param?.ToPropDictionary()?.SelectPrimitiveTypesProperties();
 
             return Node<T>(symbol, p);
         }
 
-        public INode Node<T>(Symbol symbol, Dictionary<string, object> param = null) where T : class
+        public INode Node<T>(Symbol symbol, IDictionary<string, object> param = null) where T : class
         {
             symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
             param = param ?? new Dictionary<string, object>();
@@ -46,12 +46,12 @@ namespace N4pper.QueryUtils
 
         public IRel Rel<T>(Symbol symbol, object param) where T : class
         {
-            Dictionary<string, object> p = param?.ToPropDictionary()?.SelectPrimitiveTypesProperties();
+            IDictionary<string, object> p = param?.ToPropDictionary()?.SelectPrimitiveTypesProperties();
 
             return Rel<T>(symbol, p);
         }
 
-        public IRel Rel<T>(Symbol symbol, Dictionary<string, object> param = null) where T : class
+        public IRel Rel<T>(Symbol symbol, IDictionary<string, object> param = null) where T : class
         {
             symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
             param = param ?? new Dictionary<string, object>();

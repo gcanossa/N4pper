@@ -14,9 +14,9 @@ namespace N4pper.QueryUtils
         }
         public virtual Symbol Symbol { get; protected set; }
         public virtual Type Type { get; protected set; }
-        public virtual Dictionary<string, object> Props { get; protected set; }
+        public virtual IDictionary<string, object> Props { get; protected set; }
 
-        public EntityBase(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null)
+        public EntityBase(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {
             Symbol = symbol;
             Type = type;

@@ -11,8 +11,8 @@ namespace N4pper.QueryUtils
         INode SetSymbol(Symbol symbol);
         INode SetType(Type type);
 
-        RelPath _(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null);
-        RelPath V_(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null);
+        RelPath _(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null);
+        RelPath V_(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null);
         RelPath _(IRel rel);
         RelPath V_(IRel rel);
     }

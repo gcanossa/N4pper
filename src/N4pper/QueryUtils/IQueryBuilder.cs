@@ -9,10 +9,10 @@ namespace N4pper.QueryUtils
         Symbol Symbol(string name = null);
 
         INode Node<T>(Symbol symbol, object param) where T : class;
-        INode Node<T>(Symbol symbol, Dictionary<string, object> param = null) where T : class;
+        INode Node<T>(Symbol symbol, IDictionary<string, object> param = null) where T : class;
         INode Node(Symbol symbol);
         IRel Rel<T>(Symbol symbol, object param) where T : class;
-        IRel Rel<T>(Symbol symbol, Dictionary<string, object> param = null) where T : class;
+        IRel Rel<T>(Symbol symbol, IDictionary<string, object> param = null) where T : class;
         IRel Rel(Symbol symbol);
 
         IEnumerable<Symbol> Symbols { get; }

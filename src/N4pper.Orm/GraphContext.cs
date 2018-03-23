@@ -1,4 +1,5 @@
 ﻿using N4pper.Decorators;
+using N4pper.Orm.Design;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
 using OMnG;
@@ -32,11 +33,18 @@ namespace N4pper.Orm
         public void Add(object obj)
         {
             if (!ManagedObjects.Contains(obj))
+            {
                 ManagedObjects.Add(obj);
+                if(ManagedObjectsToBeRemoved.Contains(obj))
+                    ManagedObjectsToBeRemoved.Remove(obj);
+                object tmp = ManagedObjectsToBeRemoved.FirstOrDefault(p => OrmCoreTypes.AreEqual(p, obj));
+                if (tmp != null)
+                    ManagedObjectsToBeRemoved.Remove(tmp);
+            }
             else
             {
                 object tmp = ManagedObjects.FirstOrDefault(p => OrmCoreTypes.AreEqual(p, obj));
-                if (tmp!=null)
+                if (tmp != null)
                 {
                     OrmCoreTypes.CopyProps[tmp.GetType()].Invoke(null, new object[] { tmp, obj?.ToPropDictionary(), null });
                 }
@@ -44,15 +52,25 @@ namespace N4pper.Orm
         }
         public void Remove(object obj)
         {
-            if (ManagedObjects.Contains(obj) || ManagedObjects.Any(p => OrmCoreTypes.AreEqual(p, obj)))
+            if (ManagedObjects.Contains(obj))
                 ManagedObjects.Remove(obj);
+            object tmp = ManagedObjects.FirstOrDefault(p => OrmCoreTypes.AreEqual(p, obj));
+            if (tmp != null)
+                ManagedObjects.Remove(tmp);
             if (!ManagedObjectsToBeRemoved.Contains(obj) || !ManagedObjectsToBeRemoved.Any(p => OrmCoreTypes.AreEqual(p, obj)))
                 ManagedObjectsToBeRemoved.Add(obj);
+        }
+        public void Detach(object obj)
+        {
+            if (ManagedObjects.Contains(obj))
+                ManagedObjects.Remove(obj);
+            if (ManagedObjectsToBeRemoved.Contains(obj))
+                ManagedObjectsToBeRemoved.Remove(obj);
         }
 
         #region private methods
 
-        private (List<Tuple<PropertyInfo, int, IEnumerable<int>>>, List<object> index) PrepareStoringObjectGraph(IEnumerable<object> objects)
+        private (List<Tuple<PropertyInfo, int, IEnumerable<int>>>, List<object>) PrepareStoringObjectGraph(IEnumerable<object> objects)
         {
             List<Tuple<PropertyInfo, int, IEnumerable<int>>> result = new List<Tuple<PropertyInfo, int, IEnumerable<int>>>();
 
@@ -101,8 +119,36 @@ namespace N4pper.Orm
             }
         }
         
+        private void ValidateStoringObjectGraph(List<Tuple<PropertyInfo, int, IEnumerable<int>>> graph, List<object> index)
+        {
+            if (index.Any(p => ManagedObjectsToBeRemoved.Contains(p)))
+                throw new InvalidOperationException("Some object has some references marked to be deleted.");
+
+            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> item in graph)
+            {
+                PropertyInfo connection = OrmCoreTypes.KnownTypeRelations.ContainsKey(item.Item1) ? OrmCoreTypes.KnownTypeRelations[item.Item1]:null;
+                if(connection!=null)
+                {
+                    foreach (int idx in item.Item3)
+                    {
+                        bool fail = true;
+
+                        foreach (Tuple<PropertyInfo, int, IEnumerable<int>> p in graph.Where(p=>p.Item1==connection && p.Item2==idx))
+                        {
+                            fail = !p.Item3.Contains(item.Item2);
+                            if (!fail)
+                                break;
+                        }
+
+                        if (fail)
+                            throw new InvalidOperationException($"Property reference constraint violation detected. {item.Item1.DeclaringType.FullName}.{item.Item1.Name}->{connection.DeclaringType.FullName}.{connection.Name}");
+                    }
+                }
+            }
+        }
+
         #endregion
-        
+
         private static readonly MethodInfo _addRel = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.AddOrUpdateRel) && p.GetGenericArguments().Length == 3);
 
         private Dictionary<string, MethodInfo> AddRel { get; } = new Dictionary<string, MethodInfo>();
@@ -110,6 +156,8 @@ namespace N4pper.Orm
         private void AddOrUpdate(IStatementRunner runner)
         {
             (List<Tuple<PropertyInfo, int, IEnumerable<int>>> graph, List<object> index) = PrepareStoringObjectGraph(ManagedObjects);
+
+            ValidateStoringObjectGraph(graph, index);
 
             for (int i = 0; i < index.Count; i++)
             {
@@ -152,6 +200,8 @@ namespace N4pper.Orm
 
             AddOrUpdate(runner);
             Delete(runner);
+
+            ManagedObjectsToBeRemoved.Clear();
         }
 
         public void Dispose()

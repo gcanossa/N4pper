@@ -8,7 +8,7 @@ namespace N4pper.QueryUtils
 {
     public class Node : EntityBase, INode
     {
-        public Node(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null)
+        public Node(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
             :base(symbol, type, props)
         {
         }
@@ -46,11 +46,11 @@ namespace N4pper.QueryUtils
             return sb.ToString();
         }
 
-        public RelPath _(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null)
+        public RelPath _(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {
             return new RelPath(this, new Rel(symbol, type, props),EdgeType.Any);
         }
-        public RelPath V_(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null)
+        public RelPath V_(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
         {
             return new RelPath(this, new Rel(symbol, type, props), EdgeType.From);
         }

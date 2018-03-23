@@ -7,7 +7,7 @@ namespace N4pper.QueryUtils
 {
     public class Set : EntityBase
     {
-        public Set(Symbol symbol = null, Dictionary<string, object> props = null)
+        public Set(Symbol symbol = null, IDictionary<string, object> props = null)
             : base(symbol, null, props)
         {
         }

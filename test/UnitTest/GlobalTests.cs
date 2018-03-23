@@ -104,7 +104,9 @@ namespace UnitTest
                 var chapter1 = new Chapter { Name = "Capitolo 1", Index = 0, Book = book };
                 var chapter2 = new Chapter { Name = "Capitolo 2", Index = 1, Book = book };
                 book.Chapters = new List<Chapter>() {chapter1, chapter2 };
+                var user = new User() { Birthday = new DateTime(1988, 1, 30), Name = "Gianmaria" };
 
+                ctx.Add(user);
                 ctx.Add(chapter2);
 
                 ctx.SaveChanges(session);

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using N4pper.Orm.Design;
 
 namespace N4pper.Orm
 {
@@ -34,7 +35,7 @@ namespace N4pper.Orm
             node.Parametrize();
 
             Set set = new Set(n,
-                value.SelectPrimitiveTypesProperties()
+                value.SelectPrimitiveTypesProperties().ExludeProperties(OrmCoreTypes.KnownTypesIngnoredProperties[typeof(TNode)])
                 );
             set.Parametrize();
 
@@ -44,10 +45,23 @@ namespace N4pper.Orm
             if (value.HasIdentityKey() && value.IsIdentityKeyNotSet())
             {
                 uuid = new Symbol();
-                SequenceStatement id = new SequenceStatement(N4pper.Constants.GlobalIdentityNodeLabel, uuid);
+                if (ObjectExtensions.IsNumeric(typeof(TNode).GetProperty(Constants.IdentityPropertyName).PropertyType))
+                {
+                    SequenceStatement id = new SequenceStatement(N4pper.Constants.GlobalIdentityNodeLabel, uuid);
 
-                sb.Append(id);
-                sb.Append(" ");
+                    sb.Append(id);
+                    sb.Append(" ");
+                }
+                else if (ObjectExtensions.IsDateTime(typeof(TNode).GetProperty(Constants.IdentityPropertyName).PropertyType))
+                {
+                    sb.Append($"WITH {DateTimeOffset.Now.ToUnixTimeMilliseconds()} AS {uuid} ");
+                }
+                else if (typeof(TNode).GetProperty(Constants.IdentityPropertyName).PropertyType == typeof(string))
+                {
+                    sb.Append($"WITH \"{Guid.NewGuid().ToString("N")}\" AS {uuid} ");
+                }
+                else
+                    throw new InvalidOperationException("Unable to automatically set the identity property.");
 
                 node.Props[Constants.IdentityPropertyName] = uuid;
                 set.Props[Constants.IdentityPropertyName] = uuid;
@@ -123,7 +137,7 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            IDictionary<string, object> parameters = new Dictionary<string, object>();
 
             Symbol nS = new Symbol();
             Symbol r = new Symbol();
@@ -142,7 +156,7 @@ namespace N4pper.Orm
             parameters = parameters.MergeWith(nDp.Prepare(destination?.SelectProperties(OrmCoreTypes.KnownTypes[typeof(D)])));
 
             Set set = new Set(r,
-                value.SelectPrimitiveTypesProperties());
+                value.SelectPrimitiveTypesProperties().ExludeProperties(OrmCoreTypes.KnownTypesIngnoredProperties[typeof(TRel)]));
             Parameters setR = set.Parametrize(nameof(r));
             parameters = parameters.MergeWith(setR.Prepare(value.SelectPrimitiveTypesProperties()));
 
@@ -341,7 +355,7 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            IDictionary<string, object> parameters = new Dictionary<string, object>();
 
             Symbol nS = new Symbol();
             Symbol r = new Symbol();
@@ -387,7 +401,7 @@ namespace N4pper.Orm
 
             IGraphManagedStatementRunner mgr = (ext as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(ext));
 
-            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            IDictionary<string, object> parameters = new Dictionary<string, object>();
 
             Symbol nS = new Symbol();
             Symbol r = new Symbol();

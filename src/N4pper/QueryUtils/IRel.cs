@@ -13,8 +13,8 @@ namespace N4pper.QueryUtils
         IRel SetSymbol(Symbol symbol);
         IRel SetType(Type type);
 
-        NodePath _(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null);
-        NodePath _V(Symbol symbol = null, Type type = null, Dictionary<string, object> props = null);
+        NodePath _(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null);
+        NodePath _V(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null);
         NodePath _(INode node);
         NodePath _V(INode node);
     }

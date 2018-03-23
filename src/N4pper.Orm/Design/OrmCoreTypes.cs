@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace N4pper.Orm
+namespace N4pper.Orm.Design
 {
     internal static class OrmCoreTypes
     {
@@ -14,11 +14,12 @@ namespace N4pper.Orm
         internal static Dictionary<Type, MethodInfo> DelNode { get; } = new Dictionary<Type, MethodInfo>();
         internal static Dictionary<Type, MethodInfo> CopyProps { get; } = new Dictionary<Type, MethodInfo>();
         internal static Dictionary<Type, IEnumerable<string>> KnownTypes { get; private set; } = new Dictionary<Type, IEnumerable<string>>();
-
+        internal static Dictionary<Type, List<string>> KnownTypesIngnoredProperties { get; private set; } = new Dictionary<Type, List<string>>();
+        internal static Dictionary<PropertyInfo, PropertyInfo> KnownTypeRelations { get; private set; } = new Dictionary<PropertyInfo, PropertyInfo>();
 
         private static readonly MethodInfo _addNode = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.AddOrUpdateNode) && p.GetGenericArguments().Length == 1);
         private static readonly MethodInfo _delNode = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.DeleteNode));
-        private static readonly MethodInfo _copyProps = typeof(ObjectExtensions).GetMethods().First(p => p.Name == nameof(ObjectExtensions.CopyProperties) && p.GetParameters()[1].ParameterType == typeof(Dictionary<string, object>));
+        private static readonly MethodInfo _copyProps = typeof(ObjectExtensions).GetMethods().First(p => p.Name == nameof(ObjectExtensions.CopyProperties) && p.GetParameters()[1].ParameterType == typeof(IDictionary<string, object>));
 
         internal static bool AreEqual(object a, object b)
         {
@@ -33,8 +34,8 @@ namespace N4pper.Orm
                     a.GetType().GetInterfaces().Intersect(b.GetType().GetInterfaces()).Count() == 0)
                     return false;
 
-                Dictionary<string, object> _a = a.ToPropDictionary().SelectProperties(KnownTypes[a.GetType()]);
-                Dictionary<string, object> _b = b.ToPropDictionary().SelectProperties(KnownTypes[b.GetType()]);
+                IDictionary<string, object> _a = a.ToPropDictionary().SelectProperties(KnownTypes[a.GetType()]);
+                IDictionary<string, object> _b = b.ToPropDictionary().SelectProperties(KnownTypes[b.GetType()]);
 
                 if (_a.Count != _b.Count)
                     return false;
@@ -66,6 +67,7 @@ namespace N4pper.Orm
             if (!KnownTypes.ContainsKey(type))
             {
                 KnownTypes.Add(type, keyProps);
+                KnownTypesIngnoredProperties.Add(type, new List<string>());
 
                 AddNode.Add(type, _addNode.MakeGenericMethod(type));
                 DelNode.Add(type, _delNode.MakeGenericMethod(type));
