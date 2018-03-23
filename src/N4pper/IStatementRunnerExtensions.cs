@@ -140,8 +140,8 @@ namespace N4pper
                     throw new InvalidOperationException("To map collections use IEnumerable`1");
 
                 return new QueryableNeo4jStatement<T>(
-                ext, 
-                GetStatement(query, param), 
+                ext,
+                () => GetStatement(query, param), 
                 (result, t) => 
                 {
                     return ParseRecordValue<T>(result.Values[result.Keys[0]], t);
@@ -176,7 +176,7 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                GetStatement(query, param),
+                ()=>GetStatement(query, param),
                 (result, t) =>
                 {
                     return map(
@@ -215,7 +215,7 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                GetStatement(query, param),
+                () => GetStatement(query, param),
                 (result, t) =>
                 {
                     return map(
@@ -259,7 +259,7 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                GetStatement(query, param),
+                () => GetStatement(query, param),
                 (result, t) =>
                 {
                     return map(
@@ -308,7 +308,7 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                GetStatement(query, param),
+                () => GetStatement(query, param),
                 (result, t) =>
                 {
                     return map(

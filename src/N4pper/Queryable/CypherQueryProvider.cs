@@ -10,21 +10,23 @@ namespace N4pper.Queryable
     public class CypherQueryProvider : IQueryProvider
     {
         public IStatementRunner Runner { get; set; }
-        public Statement Statement { get; set; }
+        public Func<Statement> Statement { get; set; }
         public Func<IRecord, Type, object> Mapper { get; set; }
 
-        public CypherQueryProvider(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper)
+        public CypherQueryProvider(IStatementRunner runner, Func<Statement> statement, Func<IRecord, Type, object> mapper)
         {
             Runner = runner ?? throw new ArgumentNullException(nameof(runner));
             Statement = statement ?? throw new ArgumentNullException(nameof(statement));
             Mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
-        public IQueryable CreateQuery(Expression expression)
+
+        protected virtual Type QueryableType => typeof(QueryableNeo4jStatement<>);
+        public virtual IQueryable CreateQuery(Expression expression)
         {
             Type elementType = TypeSystem.GetElementType(expression.Type);
             try
             {
-                return (IQueryable)Activator.CreateInstance(typeof(QueryableNeo4jStatement<>).MakeGenericType(elementType), new object[] { this, expression });
+                return (IQueryable)Activator.CreateInstance(QueryableType.MakeGenericType(elementType), new object[] { this, expression });
             }
             catch (System.Reflection.TargetInvocationException tie)
             {
@@ -40,14 +42,14 @@ namespace N4pper.Queryable
 
         public object Execute(Expression expression)
         {
-            return CypherQueryContext.Execute<object>(Runner, Statement, Mapper, expression);
+            return CypherQueryContext.Execute<object>(Runner, Statement(), Mapper, expression);
         }
 
         // Queryable's "single value" standard query operators call this method.
         // It is also called from QueryableTerraServerData.GetEnumerator(). 
         public TResult Execute<TResult>(Expression expression)
         {
-            return (TResult)CypherQueryContext.Execute<TResult>(Runner, Statement, Mapper, expression);
+            return (TResult)CypherQueryContext.Execute<TResult>(Runner, Statement(), Mapper, expression);
         }
     }
 }

@@ -100,22 +100,30 @@ namespace UnitTest
         {
             TestBody((session, ctx) =>
             {
-                var book = new Book { Name = "Dune", Index = 0 };
-                var chapter1 = new Chapter { Name = "Capitolo 1", Index = 0, Book = book };
-                var chapter2 = new Chapter { Name = "Capitolo 2", Index = 1, Book = book };
-                book.Chapters = new List<Chapter>() {chapter1, chapter2 };
                 var user = new User() { Birthday = new DateTime(1988, 1, 30), Name = "Gianmaria" };
+                var user2 = new User() { Birthday = new DateTime(1989, 9, 28), Name = "Valentina" };
+                var book = new Book { Name = "Dune", Index = 0, Owner = user, Contributors = new List<User>() { user, user2 } };
+                var chapter1 = new Chapter { Name = "Capitolo 1", Index = 0, Book = book, Owner = user, Contributors = new List<User>() { user, user2 } };
+                var chapter2 = new Chapter { Name = "Capitolo 2", Index = 1, Book = book, Owner = user, Contributors = new List<User>() { user, user2 } };
+                book.Chapters = new List<Chapter>() {chapter1, chapter2 };
 
                 ctx.Add(user);
                 ctx.Add(chapter2);
 
                 ctx.SaveChanges(session);
 
-                var chapter3 = new Chapter { Name = "Capitolo 3", Index = 1, Book = book };
-                book.Chapters = new List<Chapter>() { chapter1, chapter3 };
+                //var chapter3 = new Chapter { Name = "Capitolo 3", Index = 1, Book = book };
+                //book.Chapters = new List<Chapter>() { chapter1, chapter3 };
 
-                ctx.SaveChanges(session);
+                //ctx.SaveChanges(session);
 
+                Book bookQ = ctx.Query<Book>(session, k=> 
+                {
+                    k.Include(p => p.Chapters).Include(p => p.Contributors);
+                    k.Include(p => p.Chapters).Include(p => p.Owner);
+                    k.Include(p => p.Contributors);
+                    k.Include(p => p.Owner);
+                }).First(p=>p.Id>0);
 
                 IEnumerable<Book> tmp = session
                 .ExecuteQuery<Book, IEnumerable<Chapter>>(
@@ -137,7 +145,7 @@ namespace UnitTest
                 Assert.Equal(2, tmp.First().Chapters.Count());
                 Assert.Equal(tmp.First().Id, tmp.First().Chapters.First().Book.Id);
 
-                ctx.Remove(chapter3);
+                //ctx.Remove(chapter3);
                 ctx.Remove(chapter2);
                 ctx.Remove(chapter1);
                 ctx.Remove(book);

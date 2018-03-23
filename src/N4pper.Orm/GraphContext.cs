@@ -1,5 +1,6 @@
 ﻿using N4pper.Decorators;
 using N4pper.Orm.Design;
+using N4pper.Orm.Queryable;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
 using OMnG;
@@ -66,6 +67,15 @@ namespace N4pper.Orm
                 ManagedObjects.Remove(obj);
             if (ManagedObjectsToBeRemoved.Contains(obj))
                 ManagedObjectsToBeRemoved.Remove(obj);
+        }
+
+        public IQueryable<T> Query<T>(IStatementRunner runner, Action<IInclude<T>> includes = null) where T : class
+        {
+            OrmQueryableNeo4jStatement<T> tmp = new OrmQueryableNeo4jStatement<T>(runner, (r, t) => null);
+
+            includes?.Invoke(tmp);
+
+            return tmp;
         }
 
         #region private methods
@@ -141,7 +151,7 @@ namespace N4pper.Orm
                         }
 
                         if (fail)
-                            throw new InvalidOperationException($"Property reference constraint violation detected. {item.Item1.DeclaringType.FullName}.{item.Item1.Name}->{connection.DeclaringType.FullName}.{connection.Name}");
+                            throw new InvalidOperationException($"Property reference constraint violation detected. {item.Item1.ReflectedType.FullName}.{item.Item1.Name}->{connection.ReflectedType.FullName}.{connection.Name}");
                     }
                 }
             }
@@ -179,7 +189,7 @@ namespace N4pper.Orm
                     m.Invoke(null, new object[] { runner, new Entities.Connection() { PropertyName = item.Item1.Name, Version = version }, index[item.Item2], index[idx] });
                 }
                 runner.Execute(p =>
-                    $"MATCH {new Node(p.Symbol(), index[item.Item2].GetType(), index[item.Item2]?.SelectProperties(OrmCoreTypes.KnownTypes[item.Item1.DeclaringType]))}" +
+                    $"MATCH {new Node(p.Symbol(), index[item.Item2].GetType(), index[item.Item2]?.SelectProperties(OrmCoreTypes.KnownTypes[item.Item1.ReflectedType]))}" +
                     $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new { PropertyName = item.Item1.Name })}->" +
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });

@@ -71,7 +71,7 @@ namespace UnitTest
             Assert.Equal("match (p:Parent {Name:\"Luca\", Age:2}-[r:Of {Id:1}]->(:Son {Name:\"Carlo\"}) " +
                 $"WITH p,collect(r) AS q WITH p,q", res);
         }
-
+        
         //[Trait("Category", nameof(QueryableTests))]
         //[Fact(DisplayName = nameof(Debug))]
         //public void Debug()
