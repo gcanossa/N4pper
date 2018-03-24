@@ -18,7 +18,7 @@ namespace N4pper
     {
         #region helpers
 
-        internal static Dictionary<string, object> FixParameters(IDictionary<string, object> param)
+        public static Dictionary<string, object> FixParameters(IDictionary<string, object> param)
         {
             Dictionary<string, object> result = new Dictionary<string, object>();
 
@@ -42,7 +42,7 @@ namespace N4pper
 
             return result;
         }
-        internal static IDictionary<string, object> GetPropDictionary(object entity)
+        public static IDictionary<string, object> GetPropDictionary(object entity)
         {
             if (entity is IEntity)
                 return ((IEntity)entity).Properties.ToDictionary(p => p.Key, p => p.Value);
@@ -51,7 +51,7 @@ namespace N4pper
             else
                 return null;
         }
-        internal static T MapEntity<T>(IEntity entity) where T : class
+        public static T MapEntity<T>(IEntity entity) where T : class
         {
             object obj = null;
             if(entity is INode)
@@ -65,7 +65,7 @@ namespace N4pper
 
             return ((T)obj).CopyProperties(entity.Properties.ToDictionary(p=>p.Key,p=>p.Value));
         }
-        internal static object ParseRecordValue<T>(object value, Type type) where T : class
+        public static object ParseRecordValue<T>(object value, Type type) where T : class
         {
             if (ObjectExtensions.IsCollection(typeof(T)))
             {
@@ -86,7 +86,7 @@ namespace N4pper
                     return ObjectExtensions.GetInstanceOf(type, GetPropDictionary(value));
             }
         }
-        internal static IList ParseRecordsValue<T>(IList<object> value, Type type) where T : class
+        public static IList ParseRecordsValue<T>(IList<object> value, Type type) where T : class
         {
             IList lst = TypeSystem.GetListOf(type);
             foreach (object item in value.Select(p => ParseRecordValue<T>(p, type)))

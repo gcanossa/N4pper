@@ -136,53 +136,56 @@ namespace N4pper.Orm.Queryable
             Dictionary<IncludePathTree, IncludePathComponent> replacements = new Dictionary<IncludePathTree, IncludePathComponent>();
               List <IncludePathTree> branches = trees.SelectMany(p => p.Branches).ToList();
 
+            StringBuilder sb = new StringBuilder();
+
             if (branches.Count > 0)
             {
                 symbols.AddRange(branches.Select(p => p.Path));
 
-                replacements = RecursiveBuildReturnStatement(branches, builder, symbols);
+                replacements = RecursiveBuildReturnStatement(branches, sb, symbols);
 
-                builder.Append($" WITH ");
-                builder.Append(string.Join(",", symbols.Select(p => p.Symbol)));
-
-                bool hasReverse = builder.ToString().Contains("reverse(");
-
+                sb.Append($" WITH ");
+                sb.Append(string.Join(",", symbols.Select(p => p.Symbol)));
+                
                 foreach (IncludePathTree branch in trees)
                 {
                     Symbol s = new Symbol();
-                    if (branch.Branches.Count > 1)
-                        builder.Append($",{{this:{branch.Path.Symbol}");
+                    sb.Append($",{{this:{branch.Path.Symbol}");
 
                     foreach (IncludePathTree item in branch.Branches)
                     {
                         IncludePathComponent path = replacements.ContainsKey(item) ? replacements[item] : item.Path;
 
-                        builder.Append(",");
-                        builder.Append($"{path.Property.Name}:");
+                        sb.Append(",");
+                        sb.Append($"{path.Property.Name}:");
                         if (path.IsEnumerable)
                         {
-                            if (!hasReverse)
-                                builder.Append("reverse(");
-                            builder.Append("collect(distinct ");
+                            sb.Append("collect(distinct ");
                         }
-                        builder.Append(path.Symbol);
+                        sb.Append(path.Symbol);
                         if (path.IsEnumerable)
                         {
-                            builder.Append(")");
-                            if (!hasReverse)
-                            {
-                                builder.Append(")");
-                                hasReverse = true;
-                            }
+                            sb.Append(")");
                         }
                     }
-                    if (branch.Branches.Count > 1)
-                    {
-                        builder.Append($"}} AS {s}");
-                        replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s });
-                    }
+
+                    sb.Append($"}} AS {s}");
+                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s });
                 }
             }
+            else
+            {
+                sb.Append($" WITH ");
+                sb.Append(string.Join(",", symbols.Select(p => p.Symbol)));
+                foreach (IncludePathTree branch in trees)
+                {
+                    Symbol s = new Symbol();
+                    sb.Append($",{{this:{branch.Path.Symbol}}} AS {s}");
+                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s });
+                }
+            }
+
+            builder.Append(sb.ToString());
 
             symbols.RemoveAll(p => trees.Select(t => t.Path).Contains(p));
 

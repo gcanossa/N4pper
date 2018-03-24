@@ -71,7 +71,7 @@ namespace N4pper.Orm
 
         public IQueryable<T> Query<T>(IStatementRunner runner, Action<IInclude<T>> includes = null) where T : class
         {
-            OrmQueryableNeo4jStatement<T> tmp = new OrmQueryableNeo4jStatement<T>(runner, (r, t) => null);
+            OrmQueryableNeo4jStatement<T> tmp = new OrmQueryableNeo4jStatement<T>(runner, GraphContextQueryHelpers.Map);
 
             includes?.Invoke(tmp);
 
@@ -179,14 +179,15 @@ namespace N4pper.Orm
             foreach (Tuple<PropertyInfo, int, IEnumerable<int>> item in graph)
             {
                 long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                foreach (int idx in item.Item3)
+                int relOrder = item.Item3.Count();
+                foreach (int idx in item.Item3.Reverse())
                 {
                     string key = $"{index[item.Item2].GetType().FullName}:{index[idx].GetType().FullName}";
                     if (!AddRel.Any(p => p.Key == key))
                         AddRel.Add(key, _addRel.MakeGenericMethod(typeof(Entities.Connection), index[item.Item2].GetType(), index[idx].GetType()));
                     MethodInfo m = AddRel[key];
 
-                    m.Invoke(null, new object[] { runner, new Entities.Connection() { PropertyName = item.Item1.Name, Version = version }, index[item.Item2], index[idx] });
+                    m.Invoke(null, new object[] { runner, new Entities.Connection() { PropertyName = item.Item1.Name, Order = relOrder--, Version = version }, index[item.Item2], index[idx] });
                 }
                 runner.Execute(p =>
                     $"MATCH {new Node(p.Symbol(), index[item.Item2].GetType(), index[item.Item2]?.SelectProperties(OrmCoreTypes.KnownTypes[item.Item1.ReflectedType]))}" +
