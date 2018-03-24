@@ -121,54 +121,72 @@ namespace N4pper.Orm.Queryable
         {
             StringBuilder builder = new StringBuilder();
 
-            Stack<Symbol> symbols = new Stack<Symbol>();
+            List<IncludePathComponent> symbols = new List<IncludePathComponent>() { Paths.Path };
 
-            foreach (IncludePathTree item in Paths.Branches)
-            {
-                RecursiveBuildReturnStatement(item, builder, symbols);
-            }
+            Dictionary<IncludePathTree, IncludePathComponent> res = RecursiveBuildReturnStatement(new List<IncludePathTree>(){ Paths }, builder, symbols);
 
             builder.Append($" RETURN {FirstSymbol}");
-            if (Paths.Branches.Count > 0)
-                builder.Append(", [");
-
-            for (int i = 0; i < Paths.Branches.Count; i++)
-            {
-                builder.Append($"{symbols.Pop()},");
-            }
-            builder.Remove(builder.Length - 1, 1);
-
-            if (Paths.Branches.Count > 0)
-                builder.Append($"] AS {new Symbol()}");
+            if (res.Keys.Count > 0)
+                builder.Append($",{res[Paths].Symbol}");
 
             return builder.ToString();
         }
-        private void RecursiveBuildReturnStatement(IncludePathTree tree, StringBuilder builder, Stack<Symbol> symbols)
+        private Dictionary<IncludePathTree, IncludePathComponent> RecursiveBuildReturnStatement(List<IncludePathTree> trees, StringBuilder builder, List<IncludePathComponent> symbols)
         {
-            foreach (IncludePathTree item in tree.Branches)
+            Dictionary<IncludePathTree, IncludePathComponent> replacements = new Dictionary<IncludePathTree, IncludePathComponent>();
+              List <IncludePathTree> branches = trees.SelectMany(p => p.Branches).ToList();
+
+            if (branches.Count > 0)
             {
-                RecursiveBuildReturnStatement(item, builder, symbols);
+                symbols.AddRange(branches.Select(p => p.Path));
+
+                replacements = RecursiveBuildReturnStatement(branches, builder, symbols);
+
+                builder.Append($" WITH ");
+                builder.Append(string.Join(",", symbols.Select(p => p.Symbol)));
+
+                bool hasReverse = builder.ToString().Contains("reverse(");
+
+                foreach (IncludePathTree branch in trees)
+                {
+                    Symbol s = new Symbol();
+                    if (branch.Branches.Count > 1)
+                        builder.Append($",{{this:{branch.Path.Symbol}");
+
+                    foreach (IncludePathTree item in branch.Branches)
+                    {
+                        IncludePathComponent path = replacements.ContainsKey(item) ? replacements[item] : item.Path;
+
+                        builder.Append(",");
+                        builder.Append($"{path.Property.Name}:");
+                        if (path.IsEnumerable)
+                        {
+                            if (!hasReverse)
+                                builder.Append("reverse(");
+                            builder.Append("collect(distinct ");
+                        }
+                        builder.Append(path.Symbol);
+                        if (path.IsEnumerable)
+                        {
+                            builder.Append(")");
+                            if (!hasReverse)
+                            {
+                                builder.Append(")");
+                                hasReverse = true;
+                            }
+                        }
+                    }
+                    if (branch.Branches.Count > 1)
+                    {
+                        builder.Append($"}} AS {s}");
+                        replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s });
+                    }
+                }
             }
 
-            builder.Append($" WITH *,");
-            if (tree.Path.IsEnumerable)
-                builder.Append($"reverse(collect(");
-            if (tree.Branches.Count > 0)
-                builder.Append("[");
+            symbols.RemoveAll(p => trees.Select(t => t.Path).Contains(p));
 
-            builder.Append(tree.Path.Symbol);
-            for (int i = 0; i < tree.Branches.Count; i++)
-            {
-                builder.Append($",{symbols.Pop()}");
-            }
-
-            if (tree.Branches.Count > 0)
-                builder.Append("]");
-            if (tree.Path.IsEnumerable)
-                builder.Append($"))");
-
-            symbols.Push(new Symbol());
-            builder.Append($" AS {symbols.Peek()}");
+            return replacements;
         }
 
         protected void BuildStatement()
@@ -181,8 +199,8 @@ namespace N4pper.Orm.Queryable
             Statement = new Statement(sb.ToString());
         }
 
-        protected IncludePathTree Paths { get; } = new IncludePathTree();
-        protected Symbol FirstSymbol { get; } = new Symbol();
+        protected IncludePathTree Paths { get; } = new IncludePathTree() { Path = new IncludePathComponent() { IsEnumerable=false, Symbol=new Symbol() } };
+        protected Symbol FirstSymbol => Paths.Path.Symbol;
 
         protected IInclude<D> StartNewInclude<D>(IEnumerable<string> props, bool isEnumerable) where D : class
         {
