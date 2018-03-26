@@ -11,14 +11,14 @@ namespace N4pper.Orm.Queryable
 {
     internal class IncludeQueryBuilder<T> : IInclude<T> where T : class
     {
-        protected IncludePathTree Path { get; set; }
+        protected ITree<IncludePathComponent> Path { get; set; }
 
-        public IncludeQueryBuilder(IncludePathTree path)
+        public IncludeQueryBuilder(ITree<IncludePathComponent> path)
         {
             Path = path ?? throw new ArgumentNullException(nameof(path));
         }
 
-        private IncludePathTree ManageInclude<D>(IEnumerable<string> props, bool isEnumerable)
+        private ITree<IncludePathComponent> ManageInclude<D>(IEnumerable<string> props, bool isEnumerable)
         {
             if(props.Count()!=1)
                 throw new ArgumentException("Only a single navigation property must be specified", nameof(props));
@@ -26,9 +26,9 @@ namespace N4pper.Orm.Queryable
 
             Symbol to = new Symbol();
             Symbol toRel = new Symbol();
-            IncludePathTree newTree = new IncludePathTree()
+            ITree<IncludePathComponent> newTree = new IncludePathTree()
             {
-                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel }
+                Item = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel }
             };
 
             newTree = Path.Add(newTree);

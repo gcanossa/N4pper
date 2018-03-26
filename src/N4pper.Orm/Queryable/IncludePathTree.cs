@@ -5,16 +5,16 @@ using System.Text;
 
 namespace N4pper.Orm.Queryable
 {
-    internal class IncludePathTree
+    internal class IncludePathTree : ITree<IncludePathComponent>
     {
-        public IncludePathComponent Path { get; set; }
-        public List<IncludePathTree> Branches { get; } = new List<IncludePathTree>();
-
-        public IncludePathTree Add(IncludePathTree tree)
+        public IncludePathComponent Item { get; set; }
+        public List<ITree<IncludePathComponent>> Branches { get; } = new List<ITree<IncludePathComponent>>();
+        
+        public ITree<IncludePathComponent> Add(ITree<IncludePathComponent> tree)
         {
             tree = tree ?? throw new ArgumentNullException(nameof(tree));
 
-            IncludePathTree t = Branches.FirstOrDefault(p => p.Path.Property.Equals(tree.Path.Property));
+            ITree<IncludePathComponent> t = Branches.FirstOrDefault(p => p.Item.Property.Equals(tree.Item.Property));
             if (t == null)
             {
                 t = tree;

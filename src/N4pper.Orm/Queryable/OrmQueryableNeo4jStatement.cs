@@ -88,127 +88,106 @@ namespace N4pper.Orm.Queryable
         private string BuildMatchStatement()
         {
             StringBuilder builder = new StringBuilder();
-
-            builder.Append($"MATCH {new Node(FirstSymbol, typeof(TData)).BuildForQuery()}");
             Stack<Symbol> symbols = new Stack<Symbol>();
             symbols.Push(FirstSymbol);
-            foreach (IncludePathTree item in Paths.Branches)
+
+            builder.Append($"MATCH {new Node(FirstSymbol, typeof(TData)).BuildForQuery()}");
+
+            Paths.DepthFirstPaths((src,dst) =>
             {
+                Type t = dst.Item.IsEnumerable ? dst.Item.Property.PropertyType.GetGenericArguments()[0] : dst.Item.Property.PropertyType;
+
                 builder.Append(" OPTIONAL MATCH ");
-                RecursiveBuildMatchStatement(item, builder, symbols);
-            }
-            symbols.Pop();
+                builder.Append(
+                    new Node(src.Item.Symbol)
+                    ._(dst.Item.RelSymbol, typeof(Entities.Connection), new { PropertyName = dst.Item.Property.Name }.ToPropDictionary())
+                    ._V(dst.Item.Symbol, t).BuildForQuery()
+                    );
+            });
             
             return builder.ToString();
         }
-        private void RecursiveBuildMatchStatement(IncludePathTree tree, StringBuilder builder, Stack<Symbol> symbols)
-        {
-            Type t = tree.Path.IsEnumerable ? tree.Path.Property.PropertyType.GetGenericArguments()[0] : tree.Path.Property.PropertyType;
-            
-            builder.Append(
-                new Node(symbols.Peek())
-                ._(tree.Path.RelSymbol,typeof(Entities.Connection), new { PropertyName = tree.Path.Property.Name }.ToPropDictionary())
-                ._V(tree.Path.Symbol, t).BuildForQuery()
-                );
-            symbols.Push(tree.Path.Symbol);
-            foreach (IncludePathTree item in tree.Branches)
-            {
-                builder.Append(" OPTIONAL MATCH ");
-                RecursiveBuildMatchStatement(item, builder, symbols);
-            }
-            symbols.Pop();
-        }
-        private void RecursiveX(IncludePathTree tree, StringBuilder builder)
-        {
-            if (tree.Path.IsEnumerable)
-                builder.Append($"[{tree.Path.RelSymbol}.{nameof(Entities.Connection.Order)},{tree.Path.Symbol}] AS {tree.Path.Symbol}");
-            else
-                builder.Append($"{tree.Path.Symbol}");
-            builder.Append($",");
-            foreach (IncludePathTree item in tree.Branches)
-            {
-                RecursiveX(item, builder);
-            }
-        }
+        
         private string BuildReturnStatement()
         {
             StringBuilder builder = new StringBuilder();
-
-            List<IncludePathComponent> symbols = new List<IncludePathComponent>() { Paths.Path };
-
+            
             builder.Append(" WITH ");
-            RecursiveX(Paths, builder);
+
+            Paths.DepthFirst(tree=>
+            {
+                if (tree.Item.IsEnumerable)
+                    builder.Append($"[{tree.Item.RelSymbol}.{nameof(Entities.Connection.Order)},{tree.Item.Symbol}] AS {tree.Item.Symbol}");
+                else
+                    builder.Append($"{tree.Item.Symbol}");
+
+                builder.Append($",");
+            });
             builder.Remove(builder.Length - 1, 1);
 
-            Dictionary<IncludePathTree, IncludePathComponent> res = RecursiveBuildReturnStatement(new List<IncludePathTree>(){ Paths }, builder, symbols);
+            Dictionary<ITree<IncludePathComponent>, IncludePathComponent> replacements = new Dictionary<ITree<IncludePathComponent>, IncludePathComponent>();
+            List<ITree<IncludePathComponent>> symbols = new List<ITree<IncludePathComponent>>();
+            Paths.DepthFirst(tree => symbols.Add(tree));
+            Paths.BreathFirstLevels(trees=>
+            {
+                List<ITree<IncludePathComponent>> branches = trees.SelectMany(p => p.Branches).ToList();
 
+                if (trees.First()!=Paths)
+                    symbols.RemoveAll(p=>trees.Any(q=>q==p));
+
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append($" WITH ");
+
+                if (branches.Count > 0)
+                {
+                    sb.Append(string.Join(",", symbols.Select(p => p.Item.Symbol)));
+
+                    foreach (IncludePathTree branch in trees)
+                    {
+                        Symbol s = new Symbol();
+                        sb.Append($",{{this:{branch.Item.Symbol}");
+
+                        foreach (IncludePathTree item in branch.Branches)
+                        {
+                            IncludePathComponent path = replacements.ContainsKey(item) ? replacements[item] : item.Item;
+
+                            sb.Append(",");
+                            sb.Append($"{path.Property.Name}:");
+                            if (path.IsEnumerable)
+                            {
+                                sb.Append("collect(distinct ");
+                            }
+                            sb.Append(path.Symbol);
+                            if (path.IsEnumerable)
+                            {
+                                sb.Append(")");
+                            }
+                        }
+                        sb.Append($"}} AS {s}");
+                        replacements.Add(branch, new IncludePathComponent() { Property = branch.Item.Property, IsEnumerable = branch.Item.IsEnumerable, Symbol = s, RelSymbol = branch.Item.RelSymbol });
+                    }
+                }
+                else
+                {
+                    sb.Append(string.Join(",", symbols.Select(p => p.Item.Symbol)));
+                    foreach (IncludePathTree branch in trees)
+                    {
+                        Symbol s = new Symbol();
+                        sb.Append($",{{this:{branch.Item.Symbol}}} AS {s}");
+                        replacements.Add(branch, new IncludePathComponent() { Property = branch.Item.Property, IsEnumerable = branch.Item.IsEnumerable, Symbol = s, RelSymbol = branch.Item.RelSymbol });
+                    }
+                }
+
+                builder.Append(sb.ToString());
+            },false);
+            
             builder.Append($" RETURN {FirstSymbol}");
-            if (res.Keys.Count > 0)
-                builder.Append($",{res[Paths].Symbol}");
+            if (replacements.Keys.Count > 0)
+                builder.Append($",{replacements[Paths].Symbol}");
 
             return builder.ToString();
         }
-        private Dictionary<IncludePathTree, IncludePathComponent> RecursiveBuildReturnStatement(List<IncludePathTree> trees, StringBuilder builder, List<IncludePathComponent> symbols)
-        {
-            Dictionary<IncludePathTree, IncludePathComponent> replacements = new Dictionary<IncludePathTree, IncludePathComponent>();
-            List <IncludePathTree> branches = trees.SelectMany(p => p.Branches).ToList();
-
-            StringBuilder sb = new StringBuilder();
-
-            if (branches.Count > 0)
-            {
-                symbols.AddRange(branches.Select(p => p.Path));
-
-                replacements = RecursiveBuildReturnStatement(branches, sb, symbols);
-
-                sb.Append($" WITH ");
-                sb.Append(string.Join(",", symbols.Select(p => p.Symbol)));
-                
-                foreach (IncludePathTree branch in trees)
-                {
-                    Symbol s = new Symbol();
-                    sb.Append($",{{this:{branch.Path.Symbol}");
-
-                    foreach (IncludePathTree item in branch.Branches)
-                    {
-                        IncludePathComponent path = replacements.ContainsKey(item) ? replacements[item] : item.Path;
-
-                        sb.Append(",");
-                        sb.Append($"{path.Property.Name}:");
-                        if (path.IsEnumerable)
-                        {
-                            sb.Append("collect(distinct ");
-                        }
-                        sb.Append(path.Symbol);
-                        if (path.IsEnumerable)
-                        {
-                            sb.Append(")");
-                        }
-                    }
-
-                    sb.Append($"}} AS {s}");
-                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s, RelSymbol = branch.Path.RelSymbol });
-                }
-            }
-            else
-            {
-                sb.Append($" WITH ");
-                sb.Append(string.Join(",", symbols.Select(p => p.Symbol)));
-                foreach (IncludePathTree branch in trees)
-                {
-                    Symbol s = new Symbol();
-                    sb.Append($",{{this:{branch.Path.Symbol}}} AS {s}");
-                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s, RelSymbol = branch.Path.RelSymbol });
-                }
-            }
-
-            builder.Append(sb.ToString());
-
-            symbols.RemoveAll(p => trees.Select(t => t.Path).Contains(p));
-
-            return replacements;
-        }
-        
         protected void BuildStatement()
         {
             StringBuilder sb = new StringBuilder();
@@ -219,8 +198,8 @@ namespace N4pper.Orm.Queryable
             Statement = new Statement(sb.ToString());
         }
 
-        protected IncludePathTree Paths { get; } = new IncludePathTree() { Path = new IncludePathComponent() { IsEnumerable=false, Symbol=new Symbol() } };
-        protected Symbol FirstSymbol => Paths.Path.Symbol;
+        protected ITree<IncludePathComponent> Paths { get; } = new IncludePathTree() { Item = new IncludePathComponent() { IsEnumerable=false, Symbol=new Symbol() } };
+        protected Symbol FirstSymbol => Paths.Item.Symbol;
 
         protected IInclude<D> StartNewInclude<D>(IEnumerable<string> props, bool isEnumerable) where D : class
         {
@@ -230,9 +209,9 @@ namespace N4pper.Orm.Queryable
 
             Symbol to = new Symbol();
             Symbol toRel = new Symbol();
-            IncludePathTree newTree = new IncludePathTree()
+            ITree<IncludePathComponent> newTree = new IncludePathTree()
             {
-                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel } 
+                Item = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel } 
             };
 
             newTree = Paths.Add(newTree);

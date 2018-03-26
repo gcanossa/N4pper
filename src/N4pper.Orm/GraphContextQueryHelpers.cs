@@ -19,7 +19,6 @@ namespace N4pper.Orm
         }
         private static object RecursiveMap(IDictionary<string, object> record, Type type, List<object> objectPool)
         {
-            //TODO: resuse existing objects don't create duplicates
             if (record == null)
                 return null;
 
