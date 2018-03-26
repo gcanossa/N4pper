@@ -28,14 +28,7 @@ namespace N4pper.Queryable.CypherSintaxHelpers
             {
                 CurrentVariables.Add(item, new List<Tuple<string, string>>());
             }
-
-            List<Tuple<string, string>> querySymbols = new List<Tuple<string, string>>();
-            foreach (Match m in Regex.Matches(BaseStatement.Substring(0, Tokens.First().Value.Index), @"[\(\[]\s*([\w_]+)(?:\s*|:)", RegexOptions.IgnoreCase))
-            {
-                if(!querySymbols.Any(p=>p.Item1 == m.Groups[1].Value))
-                    querySymbols.Add(new Tuple<string, string>(m.Groups[1].Value, null));
-            }
-
+            
             int i = 0;
             string prevKey = null;
             foreach (string currKey in Tokens.Keys)
@@ -44,14 +37,17 @@ namespace N4pper.Queryable.CypherSintaxHelpers
                 {
                     if (!string.IsNullOrEmpty(m.Groups[1].Value))
                     {
-                        if (i == 0)
+                        List<Tuple<string, string>> querySymbols = new List<Tuple<string, string>>();
+                        foreach (Match mq in Regex.Matches(BaseStatement.Substring(
+                            prevKey==null && Tokens[currKey].Index !=0 ? 0 : Tokens[prevKey].Index + Tokens[prevKey].Length, 
+                            Tokens[currKey].Index - (Tokens[prevKey].Index + Tokens[prevKey].Length)
+                            ), @"[\(\[]\s*([\w_]+)(?:\s*|:)", RegexOptions.IgnoreCase))
                         {
-                            CurrentVariables[currKey].AddRange(querySymbols);
+                            if (!querySymbols.Any(p => p.Item1 == mq.Groups[1].Value))
+                                querySymbols.Add(new Tuple<string, string>(mq.Groups[1].Value, null));
                         }
-                        else
-                        {
-                            CurrentVariables[currKey].AddRange(CurrentVariables[prevKey].Select(p=>new Tuple<string, string>(p.Item1, null)));
-                        }
+                        CurrentVariables[currKey].AddRange(CurrentVariables[prevKey].Select(p => new Tuple<string, string>(p.Item1, null)));
+                        CurrentVariables[currKey].AddRange(querySymbols);
                     }
                     else if (!string.IsNullOrEmpty(m.Groups[2].Value))
                     {

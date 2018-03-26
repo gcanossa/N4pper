@@ -40,8 +40,7 @@ namespace UnitTest
         }
 
         #endregion
-
-
+        
         [Trait("Category", nameof(QueryableTests))]
         [Fact(DisplayName = nameof(PipeVariableRewriter_test))]
         public void PipeVariableRewriter_test()
@@ -71,7 +70,22 @@ namespace UnitTest
             Assert.Equal("match (p:Parent {Name:\"Luca\", Age:2}-[r:Of {Id:1}]->(:Son {Name:\"Carlo\"}) " +
                 $"WITH p,collect(r) AS q WITH p,q", res);
         }
-        
+        [Trait("Category", nameof(QueryableTests))]
+        [Fact(DisplayName = nameof(PipeVariableRewriter_test2))]
+        public void PipeVariableRewriter_test2()
+        {
+            string query = "with val as d match (p:Parent {Name:\"Luca\", Age:2}-[r:Of {Id:1}]->(:Son {Name:\"Carlo\"}) " +
+                "WITH * WITH *, p WITH p, collect(r) WITH *, collect(r)";
+
+            PipeVariableRewriter obj = new PipeVariableRewriter();
+
+            string res = obj.Tokenize(query).Rebuild();
+            List<Match> m = Regex.Matches(res, "_[a-fA-F0-9]{32}").ToList();
+
+            Assert.Equal("WITH val as d match (p:Parent {Name:\"Luca\", Age:2}-[r:Of {Id:1}]->(:Son {Name:\"Carlo\"}) " +
+                $"WITH d,p,r WITH d,p,r,p WITH p,collect(r) AS {m[0]} WITH p,{m[0]},collect(r) AS {m[2]}", res);
+        }
+
         //[Trait("Category", nameof(QueryableTests))]
         //[Fact(DisplayName = nameof(Debug))]
         //public void Debug()
