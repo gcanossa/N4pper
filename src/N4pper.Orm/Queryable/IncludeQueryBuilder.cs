@@ -25,9 +25,10 @@ namespace N4pper.Orm.Queryable
             PropertyInfo pinfo = typeof(T).GetProperty(props.First());
 
             Symbol to = new Symbol();
+            Symbol toRel = new Symbol();
             IncludePathTree newTree = new IncludePathTree()
             {
-                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to }
+                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel }
             };
 
             newTree = Path.Add(newTree);

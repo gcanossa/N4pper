@@ -99,14 +99,42 @@ namespace N4pper.Orm.Queryable
             }
             symbols.Pop();
 
+            List<IncludePathTree> orderingRels = new List<IncludePathTree>();
+            List<Symbol> tmpSymbols = new List<Symbol>();
+            RecursiveBuildOrderByRelStatement(new List<IncludePathTree>() { Paths }, orderingRels, tmpSymbols);
+
+            if (orderingRels.Count>0)
+            {
+                SortByLevel(orderingRels);
+
+                builder.Append($" WITH ");
+                foreach (Symbol s in orderingRels.Where(p => p.Path.IsEnumerable).Select(p => p.Path.RelSymbol))
+                {
+                    builder.Append($"{s},");
+                }
+                foreach (Symbol item in tmpSymbols)
+                {
+                    builder.Append($"{item},");
+                }
+                builder.Remove(builder.Length - 1, 1);
+                builder.Append(" ORDER BY ");
+                foreach (Symbol s in orderingRels.Where(p=>p.Path.IsEnumerable).Select(p=>p.Path.RelSymbol))
+                {
+                    builder.Append($"{s}.{nameof(Entities.Connection.Order)},");
+                }
+                builder.Remove(builder.Length - 1, 1);
+                builder.Append(" ");
+            }
+
             return builder.ToString();
         }
         private void RecursiveBuildMatchStatement(IncludePathTree tree, StringBuilder builder, Stack<Symbol> symbols)
         {
             Type t = tree.Path.IsEnumerable ? tree.Path.Property.PropertyType.GetGenericArguments()[0] : tree.Path.Property.PropertyType;
+            
             builder.Append(
                 new Node(symbols.Peek())
-                ._(type:typeof(Entities.Connection), props: new { PropertyName = tree.Path.Property.Name }.ToPropDictionary())
+                ._(tree.Path.RelSymbol,typeof(Entities.Connection), new { PropertyName = tree.Path.Property.Name }.ToPropDictionary())
                 ._V(tree.Path.Symbol, t).BuildForQuery()
                 );
             symbols.Push(tree.Path.Symbol);
@@ -117,12 +145,55 @@ namespace N4pper.Orm.Queryable
             }
             symbols.Pop();
         }
+        private void RecursiveBuildOrderByRelStatement(List<IncludePathTree> trees, List<IncludePathTree> orderingRels, List<Symbol> symbols)
+        {
+            List<IncludePathTree> branches = trees.SelectMany(p => p.Branches).ToList();
+
+            for (int i = 0; i < trees.Count; i++)
+            {
+                symbols.Add(trees[i].Path.Symbol);
+            }
+
+            if (branches.Count>0)
+                RecursiveBuildOrderByRelStatement(branches, orderingRels, symbols);
+
+            for (int i = branches.Count-1; i>=0; i--)
+            {
+                orderingRels.Add(branches[i]);
+            }
+        }
+        private void SortByLevel(List<IncludePathTree> orderingRels)
+        {
+            if (orderingRels.Count <= 2)
+                return;
+
+            int i = 1;
+            IncludePathTree t = orderingRels.FirstOrDefault(p => p.Branches.Contains(orderingRels[i - 1]));
+            while(t!=null)
+            {
+                IncludePathTree n = orderingRels.FirstOrDefault(p => p!=t && !t.Branches.Contains(p));
+
+                if (n != null)
+                {
+                    i = orderingRels.IndexOf(n);
+                    int j = orderingRels.IndexOf(t);
+
+                    IncludePathTree tmp = orderingRels[i];
+                    orderingRels[i] = orderingRels[j];
+                    orderingRels[j] = tmp;
+
+                    t = orderingRels.FirstOrDefault(p => p.Branches.Contains(orderingRels[i]));
+                }
+                else
+                    t = null;
+            }
+        }
         private string BuildReturnStatement()
         {
             StringBuilder builder = new StringBuilder();
 
             List<IncludePathComponent> symbols = new List<IncludePathComponent>() { Paths.Path };
-
+            
             Dictionary<IncludePathTree, IncludePathComponent> res = RecursiveBuildReturnStatement(new List<IncludePathTree>(){ Paths }, builder, symbols);
 
             builder.Append($" RETURN {FirstSymbol}");
@@ -134,7 +205,7 @@ namespace N4pper.Orm.Queryable
         private Dictionary<IncludePathTree, IncludePathComponent> RecursiveBuildReturnStatement(List<IncludePathTree> trees, StringBuilder builder, List<IncludePathComponent> symbols)
         {
             Dictionary<IncludePathTree, IncludePathComponent> replacements = new Dictionary<IncludePathTree, IncludePathComponent>();
-              List <IncludePathTree> branches = trees.SelectMany(p => p.Branches).ToList();
+            List <IncludePathTree> branches = trees.SelectMany(p => p.Branches).ToList();
 
             StringBuilder sb = new StringBuilder();
 
@@ -170,7 +241,7 @@ namespace N4pper.Orm.Queryable
                     }
 
                     sb.Append($"}} AS {s}");
-                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s });
+                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s, RelSymbol = branch.Path.RelSymbol });
                 }
             }
             else
@@ -181,7 +252,7 @@ namespace N4pper.Orm.Queryable
                 {
                     Symbol s = new Symbol();
                     sb.Append($",{{this:{branch.Path.Symbol}}} AS {s}");
-                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s });
+                    replacements.Add(branch, new IncludePathComponent() { Property = branch.Path.Property, IsEnumerable = branch.Path.IsEnumerable, Symbol = s, RelSymbol = branch.Path.RelSymbol });
                 }
             }
 
@@ -212,30 +283,13 @@ namespace N4pper.Orm.Queryable
             PropertyInfo pinfo = typeof(TData).GetProperty(props.First());
 
             Symbol to = new Symbol();
+            Symbol toRel = new Symbol();
             IncludePathTree newTree = new IncludePathTree()
             {
-                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to } 
+                Path = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel } 
             };
 
             newTree = Paths.Add(newTree);
-
-            //Rel rel = new Rel(
-            //    null,
-            //    typeof(Entities.Connection),
-            //    new { PropertyName = pinfo.Name }.ToPropDictionary());
-            //Node node = new Node(to, typeof(D));
-            
-            //StringBuilder sb = new StringBuilder();
-            //Builders.Add(sb);
-            //List<string> returns = new List<string>();
-            //ReturnStatements.Add(returns);
-
-            //if (isEnumerable)
-            //    returns.Add($"reverse(collect({to})) as {to}");
-            //else
-            //    returns.Add(to);
-
-            //sb.Append($"OPTIONAL MATCH {new Node(FirstSymbol, typeof(TData)).BuildForQuery()}-{rel.BuildForQuery()}->{node.BuildForQuery()}");
 
             return new IncludeQueryBuilder<D>(newTree);
         }

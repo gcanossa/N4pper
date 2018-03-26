@@ -32,7 +32,8 @@ namespace N4pper.Queryable.CypherSintaxHelpers
             List<Tuple<string, string>> querySymbols = new List<Tuple<string, string>>();
             foreach (Match m in Regex.Matches(BaseStatement.Substring(0, Tokens.First().Value.Index), @"[\(\[]\s*([\w_]+)(?:\s*|:)", RegexOptions.IgnoreCase))
             {
-                querySymbols.Add(new Tuple<string, string>(m.Groups[1].Value, null));
+                if(!querySymbols.Any(p=>p.Item1 == m.Groups[1].Value))
+                    querySymbols.Add(new Tuple<string, string>(m.Groups[1].Value, null));
             }
 
             int i = 0;

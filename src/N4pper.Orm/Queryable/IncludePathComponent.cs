@@ -11,5 +11,6 @@ namespace N4pper.Orm.Queryable
         public PropertyInfo Property { get; set; }
         public bool IsEnumerable { get; set; }
         public Symbol Symbol { get; set; }
+        public Symbol RelSymbol { get; set; }
     }
 }
