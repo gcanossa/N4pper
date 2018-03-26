@@ -25,7 +25,8 @@ namespace N4pper.Orm
 
             MethodInfo m = _ParseRecordValue.MakeGenericMethod(type);
 
-            object res = m.Invoke(null, new object[] { record["this"], type});
+            object _this = record["this"] is IList ? ((IList)record["this"])[1] : record["this"];
+            object res = m.Invoke(null, new object[] { _this, type});
 
             object tmp = objectPool.FirstOrDefault(p => OrmCoreTypes.AreEqual(p, res));
             if (tmp == null)
@@ -40,7 +41,8 @@ namespace N4pper.Orm
                 if (typeof(IList).IsAssignableFrom(pinfo.PropertyType))
                 {
                     List<object> lst = new List<object>();
-                    foreach (IDictionary<string, object> item in (IList)record[key])
+                    foreach (IDictionary<string, object> item in ((List<object>)record[key])
+                        .OrderBy(p=>((IList)((Dictionary<string,object>)p)["this"])[0]))
                     {
                         lst.Add(RecursiveMap(item, ptype, objectPool));
                     }
