@@ -31,7 +31,7 @@ namespace N4pper
                     result.Add(kv.Key, kv.Value);
                 else if (kv.Value.IsDateTime())
                 {
-                    DateTimeOffset d = (DateTime)kv.Value;
+                    DateTimeOffset d = kv.Value is DateTimeOffset ? (DateTimeOffset)kv.Value : (DateTime)kv.Value;
                     result.Add(kv.Key, d.ToUnixTimeMilliseconds());
                 }
                 else if (kv.Value.GetType() == typeof(TimeSpan) || kv.Value.GetType() == typeof(TimeSpan?))

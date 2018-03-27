@@ -46,7 +46,7 @@ namespace N4pper.QueryUtils
             {
                 if (ObjectExtensions.IsDateTime(value.GetType()))
                 {
-                    DateTimeOffset d = (DateTime)value;
+                    DateTimeOffset d = value is DateTimeOffset? (DateTimeOffset)value : (DateTime)value;
                     return d.ToUnixTimeMilliseconds().ToString();
                 }
                 else if (value.GetType() == typeof(TimeSpan) || value.GetType() == typeof(TimeSpan?))

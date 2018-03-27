@@ -10,7 +10,7 @@ namespace N4pper.Orm.Design
 {
     internal class GenericBuilder<T> : IConstraintBuilder<T> where T : class
     {
-        private void ManageConnection<T, D>(IEnumerable<string> from, IEnumerable<string> back)
+        private void ManageConnection<D>(IEnumerable<string> from, IEnumerable<string> back)
         {
             PropertyInfo f = typeof(T).GetProperty(from.First());
             PropertyInfo b = typeof(D).GetProperty(back.First());
@@ -37,9 +37,9 @@ namespace N4pper.Orm.Design
             if (backP.Count() != 1)
                 throw new ArgumentException("Only a single navigation property must be specified", nameof(back));
 
-            ManageConnection<T, D>(fromP, backP);
+            ManageConnection<D>(fromP, backP);
         }
-
+        
         public void ConnectedMany<D>(Expression<Func<T, IEnumerable<D>>> from, Expression<Func<D, object>> back) where D : class
         {
             from = from ?? throw new ArgumentNullException(nameof(from));
@@ -53,41 +53,9 @@ namespace N4pper.Orm.Design
             if (backP.Count() != 1)
                 throw new ArgumentException("Only a single navigation property must be specified", nameof(back));
 
-            ManageConnection<T, D>(fromP, backP);
+            ManageConnection<D>(fromP, backP);
         }
-
-        public void ConnectedMany<D>(Expression<Func<T, IList<D>>> from, Expression<Func<D, object>> back) where D : class
-        {
-            from = from ?? throw new ArgumentNullException(nameof(from));
-            back = back ?? throw new ArgumentNullException(nameof(back));
-
-            IEnumerable<string> fromP = from.ToPropertyNameCollection();
-            if (fromP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(from));
-
-            IEnumerable<string> backP = back.ToPropertyNameCollection();
-            if (backP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(back));
-
-            ManageConnection<T, D>(fromP, backP);
-        }
-
-        public void ConnectedMany<D>(Expression<Func<T, List<D>>> from, Expression<Func<D, object>> back) where D : class
-        {
-            from = from ?? throw new ArgumentNullException(nameof(from));
-            back = back ?? throw new ArgumentNullException(nameof(back));
-
-            IEnumerable<string> fromP = from.ToPropertyNameCollection();
-            if (fromP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(from));
-
-            IEnumerable<string> backP = back.ToPropertyNameCollection();
-            if (backP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(back));
-
-            ManageConnection<T, D>(fromP, backP);
-        }
-
+        
         public IPropertyConstraintBuilder<T> Ignore(Expression<Func<T, object>> expr)
         {
             expr = expr ?? throw new ArgumentNullException(nameof(expr));

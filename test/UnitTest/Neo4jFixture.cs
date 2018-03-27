@@ -50,6 +50,7 @@ namespace UnitTest
                     .ConnectedMany(p => p.Chapters, p => p.Book);
                 builder.Entity<TestModel.Chapter>();
                 builder.Entity<TestModel.Section>();
+                builder.Entity<TestModel.Friend>();
                 builder.Entity<TestModel.User>()
                     .Ignore(p=>p.Age);
                 builder.Entity<TestModel.Exercise>();

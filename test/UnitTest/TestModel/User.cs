@@ -11,5 +11,6 @@ namespace UnitTest.TestModel
         public DateTime Birthday { get; set; }
         public DateTime? Deathday { get; set; }
         public TimeSpan Age { get { return (Deathday ?? DateTime.Now) - Birthday; } }
+        public List<Friend> Friends { get; set; } = new List<Friend>();
     }
 }

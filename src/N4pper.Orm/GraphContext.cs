@@ -1,5 +1,6 @@
 ﻿using N4pper.Decorators;
 using N4pper.Orm.Design;
+using N4pper.Orm.Entities;
 using N4pper.Orm.Queryable;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
@@ -134,24 +135,30 @@ namespace N4pper.Orm
             if (index.Any(p => ManagedObjectsToBeRemoved.Contains(p)))
                 throw new InvalidOperationException("Some object has some references marked to be deleted.");
 
-            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> item in graph)
+            foreach (ExplicitConnection item in index.Where(p=>p is ExplicitConnection))
             {
-                PropertyInfo connection = OrmCoreTypes.KnownTypeRelations.ContainsKey(item.Item1) ? OrmCoreTypes.KnownTypeRelations[item.Item1]:null;
+                if (item.Source == null && item.Destination == null)
+                    throw new InvalidOperationException("An explicit relation must have at least a vertex specified.");
+            }
+
+            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> source in graph)
+            {
+                PropertyInfo connection = OrmCoreTypes.KnownTypeRelations.ContainsKey(source.Item1) ? OrmCoreTypes.KnownTypeRelations[source.Item1]:null;
                 if(connection!=null)
                 {
-                    foreach (int idx in item.Item3)
+                    foreach (int destionationIdx in source.Item3)
                     {
                         bool fail = true;
 
-                        foreach (Tuple<PropertyInfo, int, IEnumerable<int>> p in graph.Where(p=>p.Item1==connection && p.Item2==idx))
+                        foreach (Tuple<PropertyInfo, int, IEnumerable<int>> p in graph.Where(p=>p.Item1==connection && p.Item2==destionationIdx))
                         {
-                            fail = !p.Item3.Contains(item.Item2);
+                            fail = !p.Item3.Contains(source.Item2);
                             if (!fail)
                                 break;
                         }
 
                         if (fail)
-                            throw new InvalidOperationException($"Property reference constraint violation detected. {item.Item1.ReflectedType.FullName}.{item.Item1.Name}->{connection.ReflectedType.FullName}.{connection.Name}");
+                            throw new InvalidOperationException($"Property reference constraint violation detected. {source.Item1.ReflectedType.FullName}.{source.Item1.Name}->{connection.ReflectedType.FullName}.{connection.Name}");
                     }
                 }
             }
@@ -171,12 +178,20 @@ namespace N4pper.Orm
 
             for (int i = 0; i < index.Count; i++)
             {
-                MethodInfo m = OrmCoreTypes.AddNode[index[i].GetType()];
-                MethodInfo c = OrmCoreTypes.CopyProps[index[i].GetType()];
-                index[i] = c.Invoke(null, new object[] { index[i], m.Invoke(null, new object[] { runner, index[i] }).ToPropDictionary().SelectProperties(OrmCoreTypes.KnownTypes[index[i].GetType()]), null });
+                if (!typeof(ExplicitConnection).IsAssignableFrom(index[i].GetType()))
+                {
+                    MethodInfo m = OrmCoreTypes.AddNode[index[i].GetType()];
+                    MethodInfo c = OrmCoreTypes.CopyProps[index[i].GetType()];
+                    index[i] = c.Invoke(null, new object[] { index[i], m.Invoke(null, new object[] { runner, index[i] }).ToPropDictionary().SelectProperties(OrmCoreTypes.KnownTypes[index[i].GetType()]), null });
+                }
             }
 
-            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> item in graph)
+            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> item in 
+                graph.Where(p=> 
+                !typeof(ExplicitConnection).IsAssignableFrom(p.Item1.ReflectedType) &&
+                !typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType) &&
+                !(p.Item1.PropertyType.GetInterface("IEnumerable`1")!=null && typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType.GetGenericArguments()[0]))
+                ))
             {
                 long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
                 int relOrder = item.Item3.Count();
@@ -195,8 +210,41 @@ namespace N4pper.Orm
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });
             }
-        }
 
+            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> prop in 
+                graph.Where(p=> 
+                typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType) || 
+                (p.Item1.PropertyType.GetInterface("IEnumerable`1") != null && typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType.GetGenericArguments()[0]))
+                ))
+            {
+                long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                int relOrder = prop.Item3.Count();
+                foreach (int idx in prop.Item3.Reverse())
+                {
+                    ExplicitConnection item = index[idx] as ExplicitConnection;
+
+                    if (item.Source == null)
+                        item.Source = index[prop.Item2];
+                    if (item.Destination == null)
+                        item.Destination = index[prop.Item2];
+
+                    string key = $"{item.Source.GetType().FullName}:{item.GetType().FullName}:{item.Destination.GetType().FullName}";
+                    if (!AddRel.Any(p => p.Key == key))
+                        AddRel.Add(key, _addRel.MakeGenericMethod(item.GetType(), item.Source.GetType(), item.Destination.GetType()));
+                    MethodInfo m = AddRel[key];
+
+                    item.Version = version;
+                    item.Order = relOrder--;
+                    item.PropertyName = prop.Item1.Name;
+                    m.Invoke(null, new object[] { runner, item, item.Source, item.Destination });
+                }
+                runner.Execute(p =>
+                    $"MATCH {new Node(p.Symbol(), index[prop.Item2].GetType(), index[prop.Item2]?.SelectProperties(OrmCoreTypes.KnownTypes[prop.Item1.ReflectedType]))}" +
+                    $"-{new Rel(p.Symbol("r"), prop.Item1.PropertyType.GetInterface("IEnumerable`1") != null ? prop.Item1.PropertyType.GetGenericArguments()[0] : prop.Item1.PropertyType, new { PropertyName = prop.Item1.Name }.ToPropDictionary())}->" +
+                    $"() " +
+                    $"WHERE r.Version<>$version DELETE r", new { version });
+            }
+        }
         private void Delete(IStatementRunner runner)
         {
             foreach (object item in ManagedObjectsToBeRemoved)

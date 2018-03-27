@@ -9,7 +9,5 @@ namespace N4pper.Orm.Design
     {
         void Connected<D>(Expression<Func<T,D>> from, Expression<Func<D,object>> back) where D : class;
         void ConnectedMany<D>(Expression<Func<T, IEnumerable<D>>> from, Expression<Func<D, object>> back) where D : class;
-        void ConnectedMany<D>(Expression<Func<T, IList<D>>> from, Expression<Func<D, object>> back) where D : class;
-        void ConnectedMany<D>(Expression<Func<T, List<D>>> from, Expression<Func<D, object>> back) where D : class;
     }
 }

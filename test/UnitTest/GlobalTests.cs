@@ -124,31 +124,62 @@ namespace UnitTest
                     k.Include(p => p.Contributors);
                     k.Include(p => p.Owner);
                 }).First(p=>p.Id>0);
-
-                IEnumerable<Book> tmp = session
-                .ExecuteQuery<Book, IEnumerable<Chapter>>(
-                    p => $"match {p.Node<Book>(p.Symbol("p"))._(p.Rel<Connection>(p.Symbol()))._V(p.Node<Chapter>(p.Symbol("q")))} return p, reverse(collect(q))",
-                    (b, c) =>
-                    {
-                        b.Chapters = new List<Chapter>();
-
-                        b.Chapters.AddRange(c);
-                        foreach (Chapter item in c)
-                        {
-                            item.Book = b;
-                        }
-
-                        return b;
-                    }).ToList();
-
-                Assert.Equal(1, tmp.Count());
-                Assert.Equal(2, tmp.First().Chapters.Count());
-                Assert.Equal(tmp.First().Id, tmp.First().Chapters.First().Book.Id);
+                
+                Assert.Equal(2, bookQ.Chapters.Count());
+                Assert.Equal(bookQ.Id, bookQ.Chapters.First().Book.Id);
+                Assert.Equal(bookQ.Contributors.First().Id, bookQ.Chapters.First().Contributors.First().Id);
+                Assert.Equal(bookQ, bookQ.Chapters.First().Book);
 
                 //ctx.Remove(chapter3);
+                ctx.Remove(user);
+                ctx.Remove(user2);
                 ctx.Remove(chapter2);
                 ctx.Remove(chapter1);
                 ctx.Remove(book);
+
+                ctx.SaveChanges(session);
+            });
+        }
+        [TestPriority(0)]
+        [Trait("Category", nameof(GlobalTests))]
+        [Fact(DisplayName = nameof(ManagedCreationValuedCollection))]
+        public void ManagedCreationValuedCollection()
+        {
+            TestBody((session, ctx) =>
+            {
+                var user = new User() { Birthday = new DateTime(1988, 1, 30), Name = "Gianmaria" };
+                var user1 = new User() { Birthday = new DateTime(1989, 7, 26), Name = "Sofia" };
+                var user2 = new User() { Birthday = new DateTime(1989, 9, 28), Name = "Valentina" };
+                var book = new Book { Name = "Dune", Index = 0, Owner = user, Contributors = new List<User>() { user, user2 } };
+
+                user.Friends.Add(new Friend() { Destination = user1, MeetingDay= DateTime.Now, Score = 0.99 });
+                user.Friends.Add(new Friend() { Destination = user2, MeetingDay = DateTime.Now, Score = 1 });
+
+                ctx.Add(book);
+
+                ctx.SaveChanges(session);
+
+                user.Friends[0].Score = 0.8;
+                user2.Friends.Add(new Friend() { Source = user1, MeetingDay = DateTime.Now, Score = 1});
+
+                ctx.SaveChanges(session);
+                //Book bookQ = ctx.Query<Book>(session, k =>
+                //{
+                //    k.Include(p => p.Chapters).Include(p => p.Contributors);
+                //    k.Include(p => p.Chapters).Include(p => p.Owner);
+                //    k.Include(p => p.Contributors);
+                //    k.Include(p => p.Owner);
+                //}).First(p => p.Id > 0);
+
+                //Assert.Equal(2, bookQ.Chapters.Count());
+                //Assert.Equal(bookQ.Id, bookQ.Chapters.First().Book.Id);
+                //Assert.Equal(bookQ.Contributors.First().Id, bookQ.Chapters.First().Contributors.First().Id);
+                //Assert.Equal(bookQ, bookQ.Chapters.First().Book);
+
+                ctx.Remove(book);
+                ctx.Remove(user);
+                ctx.Remove(user1);
+                ctx.Remove(user2);
 
                 ctx.SaveChanges(session);
             });

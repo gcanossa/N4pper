@@ -160,7 +160,7 @@ namespace N4pper.Queryable.Translators
                     case TypeCode.Object:
                         if (ObjectExtensions.IsDateTime(c.Value.GetType()))
                         {
-                            DateTimeOffset d = (DateTime)c.Value;
+                            DateTimeOffset d = c.Value is DateTimeOffset ? (DateTimeOffset)c.Value : (DateTime)c.Value;
                             _builder.Append(d.ToUnixTimeMilliseconds());
                         }
                         else if (c.Value.GetType() == typeof(TimeSpan) || c.Value.GetType() == typeof(TimeSpan?))
