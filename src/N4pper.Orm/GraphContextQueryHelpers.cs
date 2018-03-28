@@ -78,9 +78,9 @@ namespace N4pper.Orm
         }
         private static void WireKnownRelationship(PropertyInfo sourceProp, object sourceObj, object destinationObj)
         {
-            if (OrmCoreTypes.KnownTypeRelations.ContainsKey(sourceProp))
+            if (OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(sourceProp))
             {
-                PropertyInfo dprop = OrmCoreTypes.KnownTypeRelations[sourceProp];
+                PropertyInfo dprop = OrmCoreTypes.KnownTypeSourceRelations[sourceProp];
 
                 if (typeof(IList).IsAssignableFrom(dprop.PropertyType))
                 {

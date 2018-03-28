@@ -2,6 +2,7 @@
 using N4pper.Orm.Design;
 using N4pper.Orm.Entities;
 using N4pper.Orm.Queryable;
+using N4pper.Queryable;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
 using OMnG;
@@ -78,156 +79,75 @@ namespace N4pper.Orm
 
             return tmp;
         }
-
-        #region private methods
-
-        private (List<Tuple<PropertyInfo, int, IEnumerable<int>>>, List<object>) PrepareStoringObjectGraph(IEnumerable<object> objects)
-        {
-            List<Tuple<PropertyInfo, int, IEnumerable<int>>> result = new List<Tuple<PropertyInfo, int, IEnumerable<int>>>();
-
-            List<object> index = new List<object>();
-
-            if (objects != null)
-            {
-                foreach (object item in objects)
-                {
-                    TraverseStoringObject(item, result, index);
-                }
-            }
-
-            return (result, index);
-        }
-        private void TraverseStoringObject(object obj, List<Tuple<PropertyInfo, int, IEnumerable<int>>> accumulator, List<object> index)
-        {
-            if (index.Contains(obj))
-                return;
-            index.Add(obj);
-
-            foreach (PropertyInfo pInfo in obj.GetType().GetProperties()
-                .Where(p=>!ObjectExtensions.IsPrimitive(p.PropertyType) && p.GetValue(obj)!=null))
-            {
-                Type ienumerable = pInfo.PropertyType.GetInterface("IEnumerable`1");
-                if (ienumerable != null && !ObjectExtensions.IsPrimitive(ienumerable.GetGenericArguments()[0]))
-                {
-                    object tmp = pInfo.GetValue(obj);
-                    List<int> idx = new List<int>();
-                    foreach (object value in ((IEnumerable)tmp))
-                    {
-                        TraverseStoringObject(value, accumulator, index);
-                    }
-                    foreach (object value in ((IEnumerable)tmp))
-                    {
-                        idx.Add(index.IndexOf(value));
-                    }
-                    accumulator.Add(new Tuple<PropertyInfo, int, IEnumerable<int>>(pInfo, index.IndexOf(obj), idx));
-                }
-                else
-                {
-                    object value = pInfo.GetValue(obj);
-                    TraverseStoringObject(value, accumulator, index);
-                    accumulator.Add(new Tuple<PropertyInfo, int, IEnumerable<int>>(pInfo, index.IndexOf(obj), new int[] { index.IndexOf(value) }));
-                }
-            }
-        }
         
-        private void ValidateStoringObjectGraph(List<Tuple<PropertyInfo, int, IEnumerable<int>>> graph, List<object> index)
-        {
-            if (index.Any(p => ManagedObjectsToBeRemoved.Contains(p)))
-                throw new InvalidOperationException("Some object has some references marked to be deleted.");
-
-            foreach (ExplicitConnection item in index.Where(p=>p is ExplicitConnection))
-            {
-                if (item.Source == null && item.Destination == null)
-                    throw new InvalidOperationException("An explicit relation must have at least a vertex specified.");
-            }
-
-            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> source in graph)
-            {
-                PropertyInfo connection = OrmCoreTypes.KnownTypeRelations.ContainsKey(source.Item1) ? OrmCoreTypes.KnownTypeRelations[source.Item1]:null;
-                if(connection!=null)
-                {
-                    foreach (int destionationIdx in source.Item3)
-                    {
-                        bool fail = true;
-
-                        foreach (Tuple<PropertyInfo, int, IEnumerable<int>> p in graph.Where(p=>p.Item1==connection && p.Item2==destionationIdx))
-                        {
-                            fail = !p.Item3.Contains(source.Item2);
-                            if (!fail)
-                                break;
-                        }
-
-                        if (fail)
-                            throw new InvalidOperationException($"Property reference constraint violation detected. {source.Item1.ReflectedType.FullName}.{source.Item1.Name}->{connection.ReflectedType.FullName}.{connection.Name}");
-                    }
-                }
-            }
-        }
-
-        #endregion
-
         private static readonly MethodInfo _addRel = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.AddOrUpdateRel) && p.GetGenericArguments().Length == 3);
 
         private Dictionary<string, MethodInfo> AddRel { get; } = new Dictionary<string, MethodInfo>();
 
         private void AddOrUpdate(IStatementRunner runner)
         {
-            (List<Tuple<PropertyInfo, int, IEnumerable<int>>> graph, List<object> index) = PrepareStoringObjectGraph(ManagedObjects);
-
-            ValidateStoringObjectGraph(graph, index);
-
-            for (int i = 0; i < index.Count; i++)
+            StoringGraph graph = StoringGraph.Prepare(ManagedObjects);
+            
+            foreach (object obj in graph.Index.ToList())
             {
-                if (!typeof(ExplicitConnection).IsAssignableFrom(index[i].GetType()))
+                if (!typeof(ExplicitConnection).IsAssignableFrom(obj.GetType()))
                 {
-                    MethodInfo m = OrmCoreTypes.AddNode[index[i].GetType()];
-                    MethodInfo c = OrmCoreTypes.CopyProps[index[i].GetType()];
-                    index[i] = c.Invoke(null, new object[] { index[i], m.Invoke(null, new object[] { runner, index[i] }).ToPropDictionary().SelectProperties(OrmCoreTypes.KnownTypes[index[i].GetType()]), null });
+                    MethodInfo m = OrmCoreTypes.AddNode[obj.GetType()];
+                    MethodInfo c = OrmCoreTypes.CopyProps[obj.GetType()];
+                    int i = graph.Index.IndexOf(obj);
+                    graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { runner, obj }).ToPropDictionary().SelectProperties(OrmCoreTypes.KnownTypes[obj.GetType()]), null });
                 }
             }
 
-            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> item in 
-                graph.Where(p=> 
-                !typeof(ExplicitConnection).IsAssignableFrom(p.Item1.ReflectedType) &&
-                !typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType) &&
-                !(p.Item1.PropertyType.GetInterface("IEnumerable`1")!=null && typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType.GetGenericArguments()[0]))
-                ))
+            foreach (StoringGraph.Path path in graph.Paths
+                .Where(p =>
+                    !typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+                    !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType()))
+                .Distinct(new StoringGraph.PathComparer())
+                .ToList())
             {
                 long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                int relOrder = item.Item3.Count();
-                foreach (int idx in item.Item3.Reverse())
+                int relOrder = path.Targets.Count();
+                foreach (object obj in path.Targets.Reverse())
                 {
-                    string key = $"{index[item.Item2].GetType().FullName}:{index[idx].GetType().FullName}";
+                    string key = $"{path.Origin.GetType().FullName}:{obj.GetType().FullName}";
                     if (!AddRel.Any(p => p.Key == key))
-                        AddRel.Add(key, _addRel.MakeGenericMethod(typeof(Entities.Connection), index[item.Item2].GetType(), index[idx].GetType()));
+                        AddRel.Add(key, _addRel.MakeGenericMethod(typeof(Entities.Connection), path.Origin.GetType(), obj.GetType()));
                     MethodInfo m = AddRel[key];
 
-                    m.Invoke(null, new object[] { runner, new Entities.Connection() { PropertyName = item.Item1.Name, Order = relOrder--, Version = version }, index[item.Item2], index[idx] });
+                    m.Invoke(null, new object[] { runner, new Entities.Connection() { PropertyName = path.Property.Name, Order = relOrder--, Version = version }, path.Origin, obj });
                 }
                 runner.Execute(p =>
-                    $"MATCH {new Node(p.Symbol(), index[item.Item2].GetType(), index[item.Item2]?.SelectProperties(OrmCoreTypes.KnownTypes[item.Item1.ReflectedType]))}" +
-                    $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new { PropertyName = item.Item1.Name })}->" +
+                    $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.ReflectedType)]))}" +
+                    $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new { PropertyName = path.Property.Name })}->" +
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });
             }
 
-            foreach (Tuple<PropertyInfo, int, IEnumerable<int>> prop in 
-                graph.Where(p=> 
-                typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType) || 
-                (p.Item1.PropertyType.GetInterface("IEnumerable`1") != null && typeof(ExplicitConnection).IsAssignableFrom(p.Item1.PropertyType.GetGenericArguments()[0]))
-                ))
+            foreach (StoringGraph.Path path in graph.Paths
+                .Where(p => typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)))
+                .Distinct(new StoringGraph.PathComparer())
+                .ToList())
             {
                 long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                int relOrder = prop.Item3.Count();
-                foreach (int idx in prop.Item3.Reverse())
+                int relOrder = path.Targets.Count();
+                string sourcePropName =
+                        OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+                            path.Property.Name :
+                            OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+                            OrmCoreTypes.KnownTypeDestinationRelations[path.Property]?.Name :
+                            path.Property.Name;
+                string destinationPropName =
+                        OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+                            path.Property.Name :
+                            OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+                            OrmCoreTypes.KnownTypeSourceRelations[path.Property]?.Name :
+                            null;
+                MethodInfo c = OrmCoreTypes.CopyProps[TypeSystem.GetElementType(path.Property.PropertyType)];
+                foreach (object obj in path.Targets.Reverse())
                 {
-                    ExplicitConnection item = index[idx] as ExplicitConnection;
-
-                    if (item.Source == null)
-                        item.Source = index[prop.Item2];
-                    if (item.Destination == null)
-                        item.Destination = index[prop.Item2];
-
+                    ExplicitConnection item = obj as ExplicitConnection;
+                    
                     string key = $"{item.Source.GetType().FullName}:{item.GetType().FullName}:{item.Destination.GetType().FullName}";
                     if (!AddRel.Any(p => p.Key == key))
                         AddRel.Add(key, _addRel.MakeGenericMethod(item.GetType(), item.Source.GetType(), item.Destination.GetType()));
@@ -235,12 +155,15 @@ namespace N4pper.Orm
 
                     item.Version = version;
                     item.Order = relOrder--;
-                    item.PropertyName = prop.Item1.Name;
-                    m.Invoke(null, new object[] { runner, item, item.Source, item.Destination });
+                    item.SourcePropertyName = sourcePropName;
+
+                    item.DestinationPropertyName = destinationPropName;
+                    int i = graph.Index.IndexOf(obj);
+                    graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { runner, item, item.Source, item.Destination }).SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.PropertyType)]), null });
                 }
                 runner.Execute(p =>
-                    $"MATCH {new Node(p.Symbol(), index[prop.Item2].GetType(), index[prop.Item2]?.SelectProperties(OrmCoreTypes.KnownTypes[prop.Item1.ReflectedType]))}" +
-                    $"-{new Rel(p.Symbol("r"), prop.Item1.PropertyType.GetInterface("IEnumerable`1") != null ? prop.Item1.PropertyType.GetGenericArguments()[0] : prop.Item1.PropertyType, new { PropertyName = prop.Item1.Name }.ToPropDictionary())}->" +
+                    $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.ReflectedType)]))}" +
+                    $"-{new Rel(p.Symbol("r"), TypeSystem.GetElementType(path.Property.ReflectedType), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });
             }

@@ -10,50 +10,57 @@ namespace N4pper.Orm.Design
 {
     internal class GenericBuilder<T> : IConstraintBuilder<T> where T : class
     {
-        private void ManageConnection<D>(IEnumerable<string> from, IEnumerable<string> back)
+        private void ManageConnectionSource<D>(IEnumerable<string> from)
         {
             PropertyInfo f = typeof(T).GetProperty(from.First());
+
+            if (!OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(f))
+            {
+                OrmCoreTypes.KnownTypeSourceRelations.Add(f, null);
+            }
+        }
+        private void ManageConnectionDestination<D>(IEnumerable<string> from, IEnumerable<string> back)
+        {
+            PropertyInfo f = from != null ? typeof(T).GetProperty(from.First()) : null;
             PropertyInfo b = typeof(D).GetProperty(back.First());
 
-            if (!OrmCoreTypes.KnownTypeRelations.ContainsKey(f))
+            if (!OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(b))
             {
-                OrmCoreTypes.KnownTypeRelations.Add(f, b);
-            }
-            if (!OrmCoreTypes.KnownTypeRelations.ContainsKey(b))
-            {
-                OrmCoreTypes.KnownTypeRelations.Add(b, f);
+                OrmCoreTypes.KnownTypeDestinationRelations.Add(b, f);
+                if(f!=null)
+                {
+                    OrmCoreTypes.KnownTypeSourceRelations[f] = b;
+                }
             }
         }
-        public void Connected<D>(Expression<Func<T, D>> from, Expression<Func<D, object>> back) where D : class
+        public IReverseConnectionBuilder<D, T> Connected<D>(Expression<Func<T, D>> from = null) where D : class
         {
-            from = from ?? throw new ArgumentNullException(nameof(from));
-            back = back ?? throw new ArgumentNullException(nameof(back));
+            IEnumerable<string> fromP = null;
+            if (from != null)
+            {
+                fromP = from.ToPropertyNameCollection();
+                if (fromP.Count() != 1)
+                    throw new ArgumentException("Only a single navigation property must be specified", nameof(from));
 
-            IEnumerable<string> fromP = from.ToPropertyNameCollection();
-            if (fromP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(from));
+                ManageConnectionSource<D>(fromP);
+            }
 
-            IEnumerable<string> backP = back.ToPropertyNameCollection();
-            if (backP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(back));
-
-            ManageConnection<D>(fromP, backP);
+            return new ReverseConnectionBuilder<D, T>((backP=> ManageConnectionDestination<D>(fromP, backP)));
         }
         
-        public void ConnectedMany<D>(Expression<Func<T, IEnumerable<D>>> from, Expression<Func<D, object>> back) where D : class
+        public IReverseConnectionBuilder<D, T> ConnectedMany<D>(Expression<Func<T, IEnumerable<D>>> from = null) where D : class
         {
-            from = from ?? throw new ArgumentNullException(nameof(from));
-            back = back ?? throw new ArgumentNullException(nameof(back));
+            IEnumerable<string> fromP = null;
+            if (from != null)
+            {
+                fromP = from.ToPropertyNameCollection();
+                if (fromP.Count() != 1)
+                    throw new ArgumentException("Only a single navigation property must be specified", nameof(from));
 
-            IEnumerable<string> fromP = from.ToPropertyNameCollection();
-            if (fromP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(from));
+                ManageConnectionSource<D>(fromP);
+            }
 
-            IEnumerable<string> backP = back.ToPropertyNameCollection();
-            if (backP.Count() != 1)
-                throw new ArgumentException("Only a single navigation property must be specified", nameof(back));
-
-            ManageConnection<D>(fromP, backP);
+            return new ReverseConnectionBuilder<D, T>((backP => ManageConnectionDestination<D>(fromP, backP)));
         }
         
         public IPropertyConstraintBuilder<T> Ignore(Expression<Func<T, object>> expr)
@@ -69,6 +76,40 @@ namespace N4pper.Orm.Design
             }
 
             return this;
+        }
+
+        public IReverseTypedConnectionBuilder<D, C, T> ConnectedWith<C, D>(Expression<Func<T, C>> source = null)
+            where C : Entities.ExplicitConnection<T, D>
+            where D : class
+        {
+            IEnumerable<string> fromP = null;
+            if (source != null)
+            {
+                fromP = source.ToPropertyNameCollection();
+                if (fromP.Count() != 1)
+                    throw new ArgumentException("Only a single navigation property must be specified", nameof(source));
+
+                ManageConnectionSource<D>(fromP);
+            }
+
+            return new ReverseTypedConnectionBuilder<D, C, T>((backP => ManageConnectionDestination<D>(fromP, backP)));
+        }
+
+        public IReverseTypedConnectionBuilder<D, C, T> ConnectedManyWith<C, D>(Expression<Func<T, IEnumerable<C>>> source = null)
+            where C : Entities.ExplicitConnection<T, D>
+            where D : class
+        {
+            IEnumerable<string> fromP = null;
+            if (source != null)
+            {
+                fromP = source.ToPropertyNameCollection();
+                if (fromP.Count() != 1)
+                    throw new ArgumentException("Only a single navigation property must be specified", nameof(source));
+
+                ManageConnectionSource<D>(fromP);
+            }
+
+            return new ReverseTypedConnectionBuilder<D, C, T>((backP => ManageConnectionDestination<D>(fromP, backP)));
         }
     }
 }

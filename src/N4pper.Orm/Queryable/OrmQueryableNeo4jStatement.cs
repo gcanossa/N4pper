@@ -215,6 +215,31 @@ namespace N4pper.Orm.Queryable
             };
 
             newTree = Paths.Add(newTree);
+            //TODO: no, perché poi non si sa come continuare il chianing
+            Type type = pinfo.PropertyType.GetInterface("IEnumerable`1") != null ? pinfo.PropertyType.GetGenericArguments()[0] : pinfo.PropertyType;
+            if(typeof(Entities.ExplicitConnection).IsAssignableFrom(type))
+            {
+                newTree.Add(new IncludePathTree()
+                {
+                    Item = new IncludePathComponent()
+                    {
+                        Property = type.GetProperty(nameof(Entities.ExplicitConnection.Source)),
+                        IsEnumerable = false,
+                        Symbol = new Symbol(),
+                        RelSymbol = new Symbol()
+                    }
+                });
+                newTree = newTree.Add(new IncludePathTree()
+                {
+                    Item = new IncludePathComponent()
+                    {
+                        Property = type.GetProperty(nameof(Entities.ExplicitConnection.Destination)),
+                        IsEnumerable = false,
+                        Symbol = new Symbol(),
+                        RelSymbol = new Symbol()
+                    }
+                });
+            }
 
             return new IncludeQueryBuilder<D>(newTree);
         }

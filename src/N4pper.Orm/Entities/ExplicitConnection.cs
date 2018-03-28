@@ -10,7 +10,8 @@ namespace N4pper.Orm.Entities
         public virtual object Source { get; set; }
         public virtual object Destination { get; set; }
 
-        public virtual string PropertyName { get; internal set; }
+        public virtual string SourcePropertyName { get; internal set; }
+        public virtual string DestinationPropertyName { get; internal set; }
         public virtual int Order { get; internal set; }
         public virtual long Version { get; internal set; }
     }

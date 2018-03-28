@@ -47,10 +47,12 @@ namespace UnitTest
                 base.OnModelCreating(builder);
 
                 builder.Entity<TestModel.Book>()
-                    .ConnectedMany(p => p.Chapters, p => p.Book);
+                    .ConnectedMany(p => p.Chapters).Connected(p=>p.Book);
                 builder.Entity<TestModel.Chapter>();
                 builder.Entity<TestModel.Section>();
                 builder.Entity<TestModel.Friend>();
+                builder.Entity<TestModel.User>()
+                    .ConnectedManyWith<TestModel.Friend, TestModel.User>(p => p.Friends).ConnectedMany(p => p.Friends);
                 builder.Entity<TestModel.User>()
                     .Ignore(p=>p.Age);
                 builder.Entity<TestModel.Exercise>();

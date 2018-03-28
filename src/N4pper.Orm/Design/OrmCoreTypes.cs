@@ -15,7 +15,8 @@ namespace N4pper.Orm.Design
         internal static Dictionary<Type, MethodInfo> CopyProps { get; } = new Dictionary<Type, MethodInfo>();
         internal static Dictionary<Type, IEnumerable<string>> KnownTypes { get; private set; } = new Dictionary<Type, IEnumerable<string>>();
         internal static Dictionary<Type, List<string>> KnownTypesIngnoredProperties { get; private set; } = new Dictionary<Type, List<string>>();
-        internal static Dictionary<PropertyInfo, PropertyInfo> KnownTypeRelations { get; private set; } = new Dictionary<PropertyInfo, PropertyInfo>();
+        internal static Dictionary<PropertyInfo, PropertyInfo> KnownTypeSourceRelations { get; private set; } = new Dictionary<PropertyInfo, PropertyInfo>();
+        internal static Dictionary<PropertyInfo, PropertyInfo> KnownTypeDestinationRelations { get; private set; } = new Dictionary<PropertyInfo, PropertyInfo>();
 
         private static readonly MethodInfo _addNode = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.AddOrUpdateNode) && p.GetGenericArguments().Length == 1);
         private static readonly MethodInfo _delNode = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.DeleteNode));

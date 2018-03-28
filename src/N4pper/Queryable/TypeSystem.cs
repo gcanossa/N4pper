@@ -1,31 +1,36 @@
 ﻿using OMnG;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace N4pper.Queryable
 {
-    internal static class TypeSystem
+    public static class TypeSystem
     {
-        internal static Type GetElementType(Type seqType)
+        public static Type GetElementType(Type seqType)
         {
             Type ienum = FindIEnumerable(seqType);
             if (ienum == null) return seqType;
             return ienum.GetGenericArguments()[0];
         }
-        internal static bool IsEnumerable(Type type)
+        public static bool IsEnumerable(Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
             return type.Name == "IEnumerable`1";
         }
+        public static bool HasEnumerable(Type type)
+        {
+            return type.GetInterfaces().Any(p=> IsEnumerable(p));
+        }
 
-        internal static System.Collections.IList GetListOf(Type type)
+        public static System.Collections.IList GetListOf(Type type)
         {
             Type lst = typeof(List<>).MakeGenericType(type);
             return (System.Collections.IList)Activator.CreateInstance(lst);
         }
 
-        private static Type FindIEnumerable(Type seqType)
+        public static Type FindIEnumerable(Type seqType)
         {
             if (seqType == null || seqType == typeof(string))
                 return null;

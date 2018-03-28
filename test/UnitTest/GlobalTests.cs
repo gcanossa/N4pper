@@ -151,6 +151,8 @@ namespace UnitTest
                 var user1 = new User() { Birthday = new DateTime(1989, 7, 26), Name = "Sofia" };
                 var user2 = new User() { Birthday = new DateTime(1989, 9, 28), Name = "Valentina" };
                 var book = new Book { Name = "Dune", Index = 0, Owner = user, Contributors = new List<User>() { user, user2 } };
+                var chapter1 = new Chapter { Name = "Capitolo 1", Index = 0, Book = book, Owner = user, Contributors = new List<User>() { user, user2 } };
+                book.Chapters = new List<Chapter>() { chapter1 };
 
                 user.Friends.Add(new Friend() { Destination = user1, MeetingDay= DateTime.Now, Score = 0.99 });
                 user.Friends.Add(new Friend() { Destination = user2, MeetingDay = DateTime.Now, Score = 1 });
