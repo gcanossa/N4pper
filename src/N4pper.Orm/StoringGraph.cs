@@ -177,11 +177,22 @@ namespace N4pper.Orm
         }
         private static void PruneEquivalentPaths(StoringGraph graph)
         {
-            //IEnumerable<Path> explicitDsts = graph.Paths.Where(p=>
-            //OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(p.Property) &&
-            //typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)));
+            IEnumerable<Path> notExplicitDsts = graph.Paths.Where(p =>
+                    !typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+                    !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType()) &&
+                    OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(p.Property) &&
+                    OrmCoreTypes.KnownTypeDestinationRelations[p.Property] != null
+                    );
 
-            //graph.Paths.RemoveWhere(p=>explicitDsts.Contains(p) && p.Targets.Select(q=>q as ExplicitConnection).Any(q=>q.Destination==p.Origin));
+            graph.Paths.RemoveWhere(p=>notExplicitDsts.Contains(p));
+            
+            //IEnumerable<Path> explicitDsts = graph.Paths.Where(p =>
+            //        typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+            //        OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(p.Property) &&
+            //        OrmCoreTypes.KnownTypeDestinationRelations[p.Property] != null
+            //        );
+
+            //graph.Paths.RemoveWhere(p => explicitDsts.Contains(p));
         }
         
         private static void FixExplicitConnectionSource(StoringGraph graph, Path path)
@@ -406,8 +417,6 @@ namespace N4pper.Orm
         }
         private static void CheckImplicitConnection(StoringGraph graph, Path path)
         {
-            //TODO: probabilemnte il controllo è sbagliato
-            //TODO: fa in modo che la relazione sia unica s e d
             if (OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property))
             {
                 PropertyInfo pinfo = OrmCoreTypes.KnownTypeSourceRelations[path.Property];
@@ -415,7 +424,7 @@ namespace N4pper.Orm
                 {
                     foreach (object obj in path.Targets)
                     {
-                        if (!graph.Paths.Any(p => p.Property == pinfo && p.Targets.Contains(obj)))
+                        if (!graph.Paths.Any(p => p.Property == pinfo && p.Targets.Contains(path.Origin)))
                             throw new Exception("Implicit connection refernces anomaly detected.");
                     }
                 }
@@ -427,7 +436,7 @@ namespace N4pper.Orm
                 {
                     foreach (object obj in path.Targets)
                     {
-                        if (!graph.Paths.Any(p => p.Property == pinfo && p.Targets.Contains(obj)))
+                        if (!graph.Paths.Any(p => p.Property == pinfo && p.Targets.Contains(path.Origin)))
                             throw new Exception("Implicit connection refernces anomaly detected.");
                     }
                 }

@@ -100,7 +100,7 @@ namespace N4pper.Orm.Queryable
                 builder.Append(" OPTIONAL MATCH ");
                 builder.Append(
                     new Node(src.Item.Symbol)
-                    ._(dst.Item.RelSymbol, typeof(Entities.Connection), new { PropertyName = dst.Item.Property.Name }.ToPropDictionary())
+                    ._(dst.Item.RelSymbol, typeof(Entities.Connection), new { PropertyName = dst.Item.Property.Name }.ToPropDictionary())//TODO: non valida da rifare
                     ._V(dst.Item.Symbol, t).BuildForQuery()
                     );
             });

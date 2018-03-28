@@ -27,7 +27,7 @@ namespace N4pper.Orm
         
         protected virtual void OnModelCreating(GraphModelBuilder builder)
         {
-            OrmCoreTypes.Entity<Entities.Connection>(p => new { p.PropertyName, p.Version });
+            OrmCoreTypes.Entity<Entities.Connection>(p => new { p.SourcePropertyName, p.DestinationPropertyName, p.Version });
         }
 
         protected List<object> ManagedObjects { get; } = new List<object>();
@@ -108,6 +108,18 @@ namespace N4pper.Orm
             {
                 long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
                 int relOrder = path.Targets.Count();
+                string sourcePropName =
+                         OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+                             path.Property.Name :
+                             OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+                             OrmCoreTypes.KnownTypeDestinationRelations[path.Property]?.Name??"" :
+                             path.Property.Name;
+                string destinationPropName =
+                        OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+                            path.Property.Name :
+                            OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+                            OrmCoreTypes.KnownTypeSourceRelations[path.Property]?.Name??"" :
+                            "";
                 foreach (object obj in path.Targets.Reverse())
                 {
                     string key = $"{path.Origin.GetType().FullName}:{obj.GetType().FullName}";
@@ -115,11 +127,11 @@ namespace N4pper.Orm
                         AddRel.Add(key, _addRel.MakeGenericMethod(typeof(Entities.Connection), path.Origin.GetType(), obj.GetType()));
                     MethodInfo m = AddRel[key];
 
-                    m.Invoke(null, new object[] { runner, new Entities.Connection() { PropertyName = path.Property.Name, Order = relOrder--, Version = version }, path.Origin, obj });
+                    m.Invoke(null, new object[] { runner, new Entities.Connection() { SourcePropertyName = sourcePropName, DestinationPropertyName = destinationPropName, Order = relOrder--, Version = version }, path.Origin, obj });
                 }
                 runner.Execute(p =>
                     $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.ReflectedType)]))}" +
-                    $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new { PropertyName = path.Property.Name })}->" +
+                    $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });
             }
