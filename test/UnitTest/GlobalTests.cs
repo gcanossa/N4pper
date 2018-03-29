@@ -175,10 +175,7 @@ namespace UnitTest
 
                 Book bookQ = ctx.Query<Book>(session, k =>
                 {
-                    k.Include(p => p.Chapters).Include(p => p.Contributors);
-                    k.Include(p => p.Chapters).Include(p => p.Owner);
                     k.Include(p => p.Contributors).Include<Friend,User>(p=>p.Friends).Include(p=>p.OwnedContents);
-                    k.Include(p => p.Owner);
                 }).First(p => p.Id > 0);
 
                 //Assert.Equal(2, bookQ.Chapters.Count());

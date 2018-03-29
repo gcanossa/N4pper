@@ -133,7 +133,7 @@ namespace N4pper.Orm.Queryable
             Paths.DepthFirst(tree=>
             {
                 if (tree.Item.IsEnumerable || tree.Item.Label!=null)
-                    builder.Append($"{{rel:{tree.Item.RelSymbol},obj:{tree.Item.Symbol}}} AS {tree.Item.Symbol}");
+                    builder.Append($"[{tree.Item.RelSymbol},{tree.Item.Symbol}] AS {tree.Item.Symbol}");
                 else
                     builder.Append($"{tree.Item.Symbol}");
 

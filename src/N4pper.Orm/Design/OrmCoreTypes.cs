@@ -35,8 +35,8 @@ namespace N4pper.Orm.Design
                     a.GetType().GetInterfaces().Intersect(b.GetType().GetInterfaces()).Count() == 0)
                     return false;
 
-                IDictionary<string, object> _a = a.ToPropDictionary().SelectProperties(KnownTypes[a.GetType()]);
-                IDictionary<string, object> _b = b.ToPropDictionary().SelectProperties(KnownTypes[b.GetType()]);
+                IDictionary<string, object> _a = a.SelectProperties(KnownTypes[a.GetType()]);
+                IDictionary<string, object> _b = b.SelectProperties(KnownTypes[b.GetType()]);
 
                 if (_a.Count != _b.Count)
                     return false;
