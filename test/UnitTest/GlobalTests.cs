@@ -110,14 +110,14 @@ namespace UnitTest
                 ctx.Add(user);
                 ctx.Add(chapter2);
 
-                ctx.SaveChanges(session);
+                ctx.SaveChanges();
 
                 //var chapter3 = new Chapter { Name = "Capitolo 3", Index = 1, Book = book };
                 //book.Chapters = new List<Chapter>() { chapter1, chapter3 };
 
                 //ctx.SaveChanges(session);
 
-                Book bookQ = ctx.Query<Book>(session, k=> 
+                Book bookQ = ctx.Query<Book>(k=> 
                 {
                     k.Include(p => p.Chapters).Include(p => p.Contributors);
                     k.Include(p => p.Chapters).Include(p => p.Owner);
@@ -137,7 +137,7 @@ namespace UnitTest
                 ctx.Remove(chapter1);
                 ctx.Remove(book);
 
-                ctx.SaveChanges(session);
+                ctx.SaveChanges();
             });
         }
         [TestPriority(0)]
@@ -160,7 +160,7 @@ namespace UnitTest
 
                 ctx.Add(book);
 
-                ctx.SaveChanges(session);
+                ctx.SaveChanges();
 
                 //user.Friends[0].Score = 0.8;
                 //user2.Friends.Add(new Friend() { Source = user1, MeetingDay = DateTime.Now, Score = 1});
@@ -174,7 +174,7 @@ namespace UnitTest
                 //    k.Include(p => p.Owner);
                 //}).First(p => p.Id > 0);
 
-                Book bookQ = ctx.Query<Book>(session, k =>
+                Book bookQ = ctx.Query<Book>(k =>
                 {
                     k.Include(p => p.Contributors).Include<Friend,User>(p=>p.Friends).Include(p=>p.OwnedContents);
                     k.Include(p => p.Owner).Include<Friend, User>(p => p.BestFriend);
@@ -190,7 +190,7 @@ namespace UnitTest
                 ctx.Remove(user1);
                 ctx.Remove(user2);
 
-                ctx.SaveChanges(session);
+                ctx.SaveChanges();
             });
         }
     }
