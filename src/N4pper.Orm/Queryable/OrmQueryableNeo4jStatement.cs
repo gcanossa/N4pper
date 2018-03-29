@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using N4pper.Orm.Design;
 using N4pper.Queryable;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
@@ -79,12 +80,7 @@ namespace N4pper.Orm.Queryable
             return (Provider.Execute<System.Collections.IEnumerable>(Expression)).GetEnumerator();
         }
         #endregion
-
-        private string RemoveAsStatement(string statement)
-        {
-            return Regex.Replace(statement, @"\s+AS\s+.+$", "", RegexOptions.IgnoreCase);
-        }
-
+        
         private string BuildMatchStatement()
         {
             StringBuilder builder = new StringBuilder();
@@ -95,14 +91,28 @@ namespace N4pper.Orm.Queryable
 
             Paths.DepthFirstPaths((src,dst) =>
             {
-                Type t = dst.Item.IsEnumerable ? dst.Item.Property.PropertyType.GetGenericArguments()[0] : dst.Item.Property.PropertyType;
+                Type t =
+                    dst.Item.IsReverse ?
+                        dst.Item.IsEnumerable ? dst.Item.DestinationProperty.PropertyType.GetGenericArguments()[0] : dst.Item.DestinationProperty.PropertyType
+                        :
+                        dst.Item.IsEnumerable ? dst.Item.SourceProperty.PropertyType.GetGenericArguments()[0] : dst.Item.SourceProperty.PropertyType;
 
+                Type r = dst.Item.Label == null ? typeof(Entities.Connection) : new string[] { dst.Item.Label }.GetTypesFromLabels().First();
+
+                Rel rel = new Rel(dst.Item.RelSymbol, r, new Dictionary<string, object>()
+                {
+                    { nameof(dst.Item.SourceProperty), dst.Item.SourceProperty?.Name??"" },
+                    { nameof(dst.Item.DestinationProperty), dst.Item.DestinationProperty?.Name??"" }
+                });
+
+                EdgeType ef = dst.Item.IsReverse ? EdgeType.From : EdgeType.Any;
+                EdgeType es = dst.Item.IsReverse ? EdgeType.Any : EdgeType.To;
                 builder.Append(" OPTIONAL MATCH ");
-                builder.Append(
-                    new Node(src.Item.Symbol)
-                    ._(dst.Item.RelSymbol, typeof(Entities.Connection), new { PropertyName = dst.Item.Property.Name }.ToPropDictionary())//TODO: non valida da rifare
-                    ._V(dst.Item.Symbol, t).BuildForQuery()
-                    );
+                builder.Append($"{new Node(src.Item.Symbol).BuildForQuery()}");
+                builder.Append($"{ef.ToCypherString()}");
+                builder.Append($"{rel}");
+                builder.Append($"{es.ToCypherString()}");
+                builder.Append($"{new Node(dst.Item.Symbol, t).BuildForQuery()}");
             });
             
             return builder.ToString();
@@ -117,7 +127,7 @@ namespace N4pper.Orm.Queryable
             Paths.DepthFirst(tree=>
             {
                 if (tree.Item.IsEnumerable)
-                    builder.Append($"[{tree.Item.RelSymbol}.{nameof(Entities.Connection.Order)},{tree.Item.Symbol}] AS {tree.Item.Symbol}");
+                    builder.Append($"{{rel:{tree.Item.RelSymbol},obj:{tree.Item.Symbol}}} AS {tree.Item.Symbol}");
                 else
                     builder.Append($"{tree.Item.Symbol}");
 
@@ -132,8 +142,8 @@ namespace N4pper.Orm.Queryable
             {
                 List<ITree<IncludePathComponent>> branches = trees.SelectMany(p => p.Branches).ToList();
 
-                if (trees.First()!=Paths)
-                    symbols.RemoveAll(p=>trees.Any(q=>q==p));
+                if (trees.First() != Paths)
+                    symbols.RemoveAll(p => trees.Any(q => q == p));
 
                 StringBuilder sb = new StringBuilder();
 
@@ -201,45 +211,42 @@ namespace N4pper.Orm.Queryable
         protected ITree<IncludePathComponent> Paths { get; } = new IncludePathTree() { Item = new IncludePathComponent() { IsEnumerable=false, Symbol=new Symbol() } };
         protected Symbol FirstSymbol => Paths.Item.Symbol;
 
-        protected IInclude<D> StartNewInclude<D>(IEnumerable<string> props, bool isEnumerable) where D : class
+        protected IInclude<D> StartNewInclude<D>(IEnumerable<string> props, bool isEnumerable, string label = null) where D : class
         {
             if (props.Count() != 1)
                 throw new ArgumentException("Only a single navigation property must be specified", nameof(props));
             PropertyInfo pinfo = typeof(TData).GetProperty(props.First());
 
+            PropertyInfo sPinfo =
+                OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(pinfo) ?
+                pinfo :
+                OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(pinfo) ?
+                OrmCoreTypes.KnownTypeDestinationRelations[pinfo] ?? null :
+                pinfo;
+            PropertyInfo dPinfo =
+                OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(sPinfo) ?
+                OrmCoreTypes.KnownTypeSourceRelations[sPinfo] ?? null :
+                null;
+
+            bool isReverse = OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(pinfo) && !OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(pinfo);
+
             Symbol to = new Symbol();
             Symbol toRel = new Symbol();
             ITree<IncludePathComponent> newTree = new IncludePathTree()
             {
-                Item = new IncludePathComponent() { Property = pinfo, IsEnumerable = isEnumerable, Symbol = to, RelSymbol = toRel } 
+                Item = new IncludePathComponent()
+                {
+                    IsReverse = isReverse,
+                    SourceProperty = sPinfo,
+                    DestinationProperty = dPinfo,
+                    IsEnumerable = isEnumerable,
+                    Symbol = to,
+                    RelSymbol = toRel,
+                    Label = label
+                } 
             };
 
             newTree = Paths.Add(newTree);
-            //TODO: no, perché poi non si sa come continuare il chianing
-            Type type = pinfo.PropertyType.GetInterface("IEnumerable`1") != null ? pinfo.PropertyType.GetGenericArguments()[0] : pinfo.PropertyType;
-            if(typeof(Entities.ExplicitConnection).IsAssignableFrom(type))
-            {
-                newTree.Add(new IncludePathTree()
-                {
-                    Item = new IncludePathComponent()
-                    {
-                        Property = type.GetProperty(nameof(Entities.ExplicitConnection.Source)),
-                        IsEnumerable = false,
-                        Symbol = new Symbol(),
-                        RelSymbol = new Symbol()
-                    }
-                });
-                newTree = newTree.Add(new IncludePathTree()
-                {
-                    Item = new IncludePathComponent()
-                    {
-                        Property = type.GetProperty(nameof(Entities.ExplicitConnection.Destination)),
-                        IsEnumerable = false,
-                        Symbol = new Symbol(),
-                        RelSymbol = new Symbol()
-                    }
-                });
-            }
 
             return new IncludeQueryBuilder<D>(newTree);
         }
@@ -266,6 +273,42 @@ namespace N4pper.Orm.Queryable
         {
             expr = expr ?? throw new ArgumentNullException(nameof(expr));
             return StartNewInclude<D>(expr.ToPropertyNameCollection(), true);
+        }
+
+        public IInclude<D> Include<C, D>(Expression<Func<TData, C>> expr)
+            where C : Entities.ExplicitConnection<TData, D>
+            where D : class
+        {
+            expr = expr ?? throw new ArgumentNullException(nameof(expr));
+
+            return StartNewInclude<D>(expr.ToPropertyNameCollection(), false, OMnG.TypeExtensions.GetLabel(typeof(C)));
+        }
+
+        public IInclude<D> Include<C, D>(Expression<Func<TData, IEnumerable<C>>> expr)
+            where C : Entities.ExplicitConnection<TData, D>
+            where D : class
+        {
+            expr = expr ?? throw new ArgumentNullException(nameof(expr));
+
+            return StartNewInclude<D>(expr.ToPropertyNameCollection(), true, OMnG.TypeExtensions.GetLabel(typeof(C)));
+        }
+
+        public IInclude<D> Include<C, D>(Expression<Func<TData, IList<C>>> expr)
+            where C : Entities.ExplicitConnection<TData, D>
+            where D : class
+        {
+            expr = expr ?? throw new ArgumentNullException(nameof(expr));
+
+            return StartNewInclude<D>(expr.ToPropertyNameCollection(), true, OMnG.TypeExtensions.GetLabel(typeof(C)));
+        }
+
+        public IInclude<D> Include<C, D>(Expression<Func<TData, List<C>>> expr)
+            where C : Entities.ExplicitConnection<TData, D>
+            where D : class
+        {
+            expr = expr ?? throw new ArgumentNullException(nameof(expr));
+
+            return StartNewInclude<D>(expr.ToPropertyNameCollection(), true, OMnG.TypeExtensions.GetLabel(typeof(C)));
         }
     }
 }

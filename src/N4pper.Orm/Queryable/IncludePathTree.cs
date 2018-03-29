@@ -14,7 +14,7 @@ namespace N4pper.Orm.Queryable
         {
             tree = tree ?? throw new ArgumentNullException(nameof(tree));
 
-            ITree<IncludePathComponent> t = Branches.FirstOrDefault(p => p.Item.Property.Equals(tree.Item.Property));
+            ITree<IncludePathComponent> t = Branches.FirstOrDefault(p => p.Equals(tree));
             if (t == null)
             {
                 t = tree;
@@ -23,6 +23,18 @@ namespace N4pper.Orm.Queryable
             }
 
             return t;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+                return false;
+            else
+                return ((IncludePathTree)obj).Item.SourceProperty == Item.SourceProperty && ((IncludePathTree)obj).Item.DestinationProperty == Item.DestinationProperty;
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
         }
     }
 }
