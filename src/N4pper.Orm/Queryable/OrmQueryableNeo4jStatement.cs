@@ -96,13 +96,19 @@ namespace N4pper.Orm.Queryable
                         dst.Item.IsEnumerable ? dst.Item.DestinationProperty.PropertyType.GetGenericArguments()[0] : dst.Item.DestinationProperty.PropertyType
                         :
                         dst.Item.IsEnumerable ? dst.Item.SourceProperty.PropertyType.GetGenericArguments()[0] : dst.Item.SourceProperty.PropertyType;
+                if (typeof(Entities.ExplicitConnection).IsAssignableFrom(t))
+                    t =
+                        dst.Item.IsReverse ?
+                            t.BaseType.GetGenericArguments()[0]
+                            :
+                            t.BaseType.GetGenericArguments()[1];
 
                 Type r = dst.Item.Label == null ? typeof(Entities.Connection) : new string[] { dst.Item.Label }.GetTypesFromLabels().First();
 
                 Rel rel = new Rel(dst.Item.RelSymbol, r, new Dictionary<string, object>()
                 {
-                    { nameof(dst.Item.SourceProperty), dst.Item.SourceProperty?.Name??"" },
-                    { nameof(dst.Item.DestinationProperty), dst.Item.DestinationProperty?.Name??"" }
+                    { nameof(Entities.ExplicitConnection.SourcePropertyName), dst.Item.SourceProperty?.Name??"" },
+                    { nameof(Entities.ExplicitConnection.DestinationPropertyName), dst.Item.DestinationProperty?.Name??"" }
                 });
 
                 EdgeType ef = dst.Item.IsReverse ? EdgeType.From : EdgeType.Any;
@@ -126,7 +132,7 @@ namespace N4pper.Orm.Queryable
 
             Paths.DepthFirst(tree=>
             {
-                if (tree.Item.IsEnumerable)
+                if (tree.Item.IsEnumerable || tree.Item.Label!=null)
                     builder.Append($"{{rel:{tree.Item.RelSymbol},obj:{tree.Item.Symbol}}} AS {tree.Item.Symbol}");
                 else
                     builder.Append($"{tree.Item.Symbol}");
@@ -163,7 +169,10 @@ namespace N4pper.Orm.Queryable
                             IncludePathComponent path = replacements.ContainsKey(item) ? replacements[item] : item.Item;
 
                             sb.Append(",");
-                            sb.Append($"{path.Property.Name}:");
+                            if(path.IsReverse)
+                                sb.Append($"{path.DestinationProperty.Name}:");
+                            else
+                                sb.Append($"{path.SourceProperty.Name}:");
                             if (path.IsEnumerable)
                             {
                                 sb.Append("collect(distinct ");
@@ -175,7 +184,16 @@ namespace N4pper.Orm.Queryable
                             }
                         }
                         sb.Append($"}} AS {s}");
-                        replacements.Add(branch, new IncludePathComponent() { Property = branch.Item.Property, IsEnumerable = branch.Item.IsEnumerable, Symbol = s, RelSymbol = branch.Item.RelSymbol });
+                        replacements.Add(branch, new IncludePathComponent()
+                        {
+                            SourceProperty = branch.Item.SourceProperty,
+                            DestinationProperty = branch.Item.DestinationProperty,
+                            IsEnumerable = branch.Item.IsEnumerable,
+                            IsReverse = branch.Item.IsReverse,
+                            Label = branch.Item.Label,
+                            Symbol = s,
+                            RelSymbol = branch.Item.RelSymbol
+                        });
                     }
                 }
                 else
@@ -185,7 +203,16 @@ namespace N4pper.Orm.Queryable
                     {
                         Symbol s = new Symbol();
                         sb.Append($",{{this:{branch.Item.Symbol}}} AS {s}");
-                        replacements.Add(branch, new IncludePathComponent() { Property = branch.Item.Property, IsEnumerable = branch.Item.IsEnumerable, Symbol = s, RelSymbol = branch.Item.RelSymbol });
+                        replacements.Add(branch, new IncludePathComponent()
+                        {
+                            SourceProperty = branch.Item.SourceProperty,
+                            DestinationProperty = branch.Item.DestinationProperty,
+                            IsEnumerable = branch.Item.IsEnumerable,
+                            IsReverse = branch.Item.IsReverse,
+                            Label = branch.Item.Label,
+                            Symbol = s,
+                            RelSymbol = branch.Item.RelSymbol
+                        });
                     }
                 }
 
