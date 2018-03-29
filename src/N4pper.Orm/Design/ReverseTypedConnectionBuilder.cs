@@ -17,6 +17,9 @@ namespace N4pper.Orm.Design
         }
         public void Connected(Expression<Func<T, C>> destination)
         {
+            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(C)) && typeof(C).BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
+                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
+
             destination = destination ?? throw new ArgumentNullException(nameof(destination));
 
             IEnumerable<string> backP = destination.ToPropertyNameCollection();
@@ -28,6 +31,9 @@ namespace N4pper.Orm.Design
 
         public void ConnectedMany(Expression<Func<T, IEnumerable<C>>> destination)
         {
+            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(C)) && typeof(C).BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
+                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
+
             destination = destination ?? throw new ArgumentNullException(nameof(destination));
 
             IEnumerable<string> backP = destination.ToPropertyNameCollection();

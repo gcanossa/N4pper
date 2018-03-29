@@ -14,9 +14,8 @@ namespace N4pper.Orm
     internal class GraphContextQueryHelpers
     {
         private static MethodInfo _ParseRecordValue = typeof(IStatementRunnerExtensions).GetMethod("ParseRecordValue");
-        public static object Map(IRecord record, Type type)
+        public static object Map(IRecord record, Type type, List<object> pool)
         {
-            List<object> pool = new List<object>();
             return RecursiveMap(record[1] as IDictionary<string, object>, type, pool);
         }
 

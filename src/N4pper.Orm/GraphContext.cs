@@ -73,13 +73,16 @@ namespace N4pper.Orm
 
         public IQueryable<T> Query<T>(IStatementRunner runner, Action<IInclude<T>> includes = null) where T : class
         {
-            OrmQueryableNeo4jStatement<T> tmp = new OrmQueryableNeo4jStatement<T>(runner, GraphContextQueryHelpers.Map);
+            if (typeof(ExplicitConnection).IsAssignableFrom(typeof(T)))
+                throw new InvalidOperationException("Quering explicit connections directly is not allowed.");
+
+            OrmQueryableNeo4jStatement<T> tmp = new OrmQueryableNeo4jStatement<T>(runner,(r,t)=> GraphContextQueryHelpers.Map(r,t,ManagedObjects));
 
             includes?.Invoke(tmp);
 
             return tmp;
         }
-        
+
         private static readonly MethodInfo _addRel = typeof(OrmCore).GetMethods().First(p => p.Name == nameof(OrmCore.AddOrUpdateRel) && p.GetGenericArguments().Length == 3);
 
         private Dictionary<string, MethodInfo> AddRel { get; } = new Dictionary<string, MethodInfo>();

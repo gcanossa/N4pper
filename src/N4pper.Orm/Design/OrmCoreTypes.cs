@@ -65,6 +65,9 @@ namespace N4pper.Orm.Design
         }
         private static void AddType(Type type, IEnumerable<string> keyProps)
         {
+            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(type) && type.BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
+                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
+
             if (!KnownTypes.ContainsKey(type))
             {
                 KnownTypes.Add(type, keyProps);

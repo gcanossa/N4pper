@@ -82,6 +82,9 @@ namespace N4pper.Orm.Design
             where C : Entities.ExplicitConnection<T, D>
             where D : class
         {
+            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(C)) && typeof(C).BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
+                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
+
             IEnumerable<string> fromP = null;
             if (source != null)
             {
@@ -99,6 +102,9 @@ namespace N4pper.Orm.Design
             where C : Entities.ExplicitConnection<T, D>
             where D : class
         {
+            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(C)) && typeof(C).BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
+                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
+
             IEnumerable<string> fromP = null;
             if (source != null)
             {
