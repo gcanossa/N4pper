@@ -54,6 +54,8 @@ namespace UnitTest
                 builder.Entity<TestModel.User>()
                     .ConnectedManyWith<TestModel.Friend, TestModel.User>(p => p.Friends).ConnectedMany(p => p.Friends);
                 builder.Entity<TestModel.User>()
+                    .ConnectedWith<TestModel.Friend, TestModel.User>(p=>p.BestFriend).Connected(p=>p.BestFriend);
+                builder.Entity<TestModel.User>()
                     .Ignore(p=>p.Age);
                 builder.Entity<TestModel.Exercise>();
                 builder.Entity<TestModel.Explaination>();

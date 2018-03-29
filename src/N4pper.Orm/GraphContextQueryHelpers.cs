@@ -117,15 +117,15 @@ namespace N4pper.Orm
                     {
                         Type relType = new string[] { ((IRelationship)(((IList)rec["this"])[0])).Type }.GetTypesFromLabels().First();
 
-                        Entities.ExplicitConnection rel = (Entities.ExplicitConnection)GetObject(rec, relType, objectPool);
+                        Entities.ExplicitConnection rel = (Entities.ExplicitConnection)GetObject(new Dictionary<string, object>() { { "this", ((IList)rec["this"])[0] } }, relType, objectPool);
                         
                         if (((IRelationship)(((IList)rec["this"])[0])).EndNodeId == ((INode)(((IList)rec["this"])[1])).Id)
                         {
-                            rel.Destination = RecursiveMap(rec["this"] as IDictionary<string, object>, rel.GetType().BaseType.GetGenericArguments()[1], objectPool);
+                            rel.Destination = RecursiveMap(rec as IDictionary<string, object>, rel.GetType().BaseType.GetGenericArguments()[1], objectPool);
                         }
                         else
                         {
-                            rel.Source = RecursiveMap(rec["this"] as IDictionary<string, object>, rel.GetType().BaseType.GetGenericArguments()[0], objectPool);
+                            rel.Source = RecursiveMap(rec as IDictionary<string, object>, rel.GetType().BaseType.GetGenericArguments()[0], objectPool);
                         }
 
                         pinfo.SetValue(res, rel);

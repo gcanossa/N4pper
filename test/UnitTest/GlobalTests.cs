@@ -156,6 +156,7 @@ namespace UnitTest
 
                 user.Friends.Add(new Friend() { Destination = user1, MeetingDay= DateTime.Now, Score = 0.99 });
                 user.Friends.Add(new Friend() { Destination = user2, MeetingDay = DateTime.Now, Score = 1 });
+                user.BestFriend = new Friend() { Destination = user2, MeetingDay = DateTime.Now, Score = 10 };
 
                 ctx.Add(book);
 
@@ -176,6 +177,7 @@ namespace UnitTest
                 Book bookQ = ctx.Query<Book>(session, k =>
                 {
                     k.Include(p => p.Contributors).Include<Friend,User>(p=>p.Friends).Include(p=>p.OwnedContents);
+                    k.Include(p => p.Owner).Include<Friend, User>(p => p.BestFriend);
                 }).First(p => p.Id > 0);
 
                 //Assert.Equal(2, bookQ.Chapters.Count());
