@@ -1,42 +1,61 @@
-﻿using Neo4j.Driver.V1;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using N4pper.Diagnostic;
+using Neo4j.Driver.V1;
 
 namespace N4pper.Decorators
 {
-    public class TransactionDecorator : StatementRunnerDecorator, ITransaction
+    public class TransactionDecorator : TransactionDecoratorBase, IGraphManagedStatementRunner
     {
-        public ITransaction Transaction { get; protected set; }
+        public N4pperManager Manager { get; protected set; }
 
-        public TransactionDecorator(ITransaction transaction) : base(transaction)
+        public TransactionDecorator(ITransaction transaction, N4pperManager manager) : base(transaction)
         {
-            Transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
+            Manager = manager;
         }
 
-        #region ITransaction
-
-        public Task CommitAsync()
+        public override IStatementResult Run(Statement statement)
         {
-            return Transaction.CommitAsync();
+            return Manager.ProfileQuery(statement.Text, () => base.Run(statement));
+        }
+        public override IStatementResult Run(string statement)
+        {
+            return Manager.ProfileQuery(statement, () => base.Run(statement));
+        }
+        public override IStatementResult Run(string statement, IDictionary<string, object> parameters)
+        {
+            return Manager.ProfileQuery(statement, () => base.Run(statement, parameters));
+        }
+        public override IStatementResult Run(string statement, object parameters)
+        {
+            return Manager.ProfileQuery(statement, () => base.Run(statement, parameters));
+        }
+        public override Task<IStatementResultCursor> RunAsync(Statement statement)
+        {
+            return Manager.ProfileQueryAsync(statement.Text, () => base.RunAsync(statement));
+        }
+        public override Task<IStatementResultCursor> RunAsync(string statement)
+        {
+            return Manager.ProfileQueryAsync(statement, () => base.RunAsync(statement));
+        }
+        public override Task<IStatementResultCursor> RunAsync(string statement, IDictionary<string, object> parameters)
+        {
+            return Manager.ProfileQueryAsync(statement, () => base.RunAsync(statement, parameters));
+        }
+        public override Task<IStatementResultCursor> RunAsync(string statement, object parameters)
+        {
+            return Manager.ProfileQueryAsync(statement, () => base.RunAsync(statement, parameters));
+        }
+        public override void Dispose()
+        {
+            base.Dispose();
         }
 
-        public void Failure()
+        protected override IDictionary<string, object> FixParameters(IDictionary<string, object> param)
         {
-            Transaction.Failure();
+            return Manager.ParamentersMangler.Mangle(param);
         }
-
-        public Task RollbackAsync()
-        {
-            return Transaction.RollbackAsync();
-        }
-        
-        public void Success()
-        {
-            Transaction.Success();
-        }
-
-        #endregion
     }
 }

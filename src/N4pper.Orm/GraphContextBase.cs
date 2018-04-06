@@ -110,7 +110,7 @@ namespace N4pper.Orm
 
             foreach (StoringGraph.Path path in graph.Paths
                 .Where(p =>
-                    !typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+                    !typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)) &&
                     !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType()))
                 .Distinct(new StoringGraph.PathComparer())
                 .ToList())
@@ -139,14 +139,14 @@ namespace N4pper.Orm
                     m.Invoke(null, new object[] { Runner, new Entities.Connection() { SourcePropertyName = sourcePropName, DestinationPropertyName = destinationPropName, Order = relOrder--, Version = version }, path.Origin, obj });
                 }
                 Runner.Execute(p =>
-                    $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.ReflectedType)]))}" +
+                    $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[ObjectExtensions.GetElementType(path.Property.ReflectedType)]))}" +
                     $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });
             }
 
             foreach (StoringGraph.Path path in graph.Paths
-                .Where(p => typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)))
+                .Where(p => typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)))
                 .Distinct(new StoringGraph.PathComparer())
                 .ToList())
             {
@@ -164,7 +164,7 @@ namespace N4pper.Orm
                             OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property) ?
                             OrmCoreTypes.KnownTypeSourceRelations[path.Property]?.Name :
                             null;
-                MethodInfo c = OrmCoreTypes.CopyProps[TypeSystem.GetElementType(path.Property.PropertyType)];
+                MethodInfo c = OrmCoreTypes.CopyProps[ObjectExtensions.GetElementType(path.Property.PropertyType)];
                 foreach (object obj in path.Targets.Reverse())
                 {
                     ExplicitConnection item = obj as ExplicitConnection;
@@ -180,11 +180,11 @@ namespace N4pper.Orm
 
                     item.DestinationPropertyName = destinationPropName;
                     int i = graph.Index.IndexOf(obj);
-                    graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { Runner, item, item.Source, item.Destination }).SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.PropertyType)]), null });
+                    graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { Runner, item, item.Source, item.Destination }).SelectProperties(OrmCoreTypes.KnownTypes[ObjectExtensions.GetElementType(path.Property.PropertyType)]), null });
                 }
                 Runner.Execute(p =>
-                    $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[TypeSystem.GetElementType(path.Property.ReflectedType)]))}" +
-                    $"-{new Rel(p.Symbol("r"), TypeSystem.GetElementType(path.Property.ReflectedType), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
+                    $"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(OrmCoreTypes.KnownTypes[ObjectExtensions.GetElementType(path.Property.ReflectedType)]))}" +
+                    $"-{new Rel(p.Symbol("r"), ObjectExtensions.GetElementType(path.Property.ReflectedType), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
                     $"() " +
                     $"WHERE r.Version<>$version DELETE r", new { version });
             }

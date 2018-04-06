@@ -36,7 +36,6 @@ namespace N4pper.Orm
 
         protected virtual void OnModelCreating(GraphModelBuilder builder)
         {
-            OrmCoreTypes.Entity<Entities.Connection>(p => new { p.SourcePropertyName, p.DestinationPropertyName, p.Version });
         }
     }
 }

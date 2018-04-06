@@ -6,8 +6,6 @@ namespace N4pper.Diagnostic
 {
     public interface IQueryProfiler
     {
-        void Increment();
-        Action<Exception> Mark();
-        void Trace(string query);
+        Action<Exception> Mark(string query);
     }
 }

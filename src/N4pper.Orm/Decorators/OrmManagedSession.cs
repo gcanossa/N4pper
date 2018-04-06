@@ -11,10 +11,8 @@ namespace N4pper.Decorators
     public class OrmManagedSession : SessionDecorator, IOrmStatementRunner
     {
         public GraphContext Context { get; internal set; }
-        public N4pperManager Manager { get; protected set; }
-        public OrmManagedSession(ISession session, N4pperManager manager) : base(session)
+        public OrmManagedSession(ISession session, N4pperManager manager) : base(session, manager)
         {
-            Manager = manager;
         }
 
         public override ITransaction BeginTransaction()
@@ -62,47 +60,6 @@ namespace N4pper.Decorators
             return base.WriteTransactionAsync(p => work(new OrmManagedTransaction(p, Manager) { Context = Context }));
         }
 
-
-        public override IStatementResult Run(Statement statement)
-        {
-            Manager.TraceStatement(statement.Text);
-            return Manager.ProfileQuery(()=>base.Run(statement));
-        }
-        public override IStatementResult Run(string statement)
-        {
-            Manager.TraceStatement(statement);
-            return Manager.ProfileQuery(() => base.Run(statement));
-        }
-        public override IStatementResult Run(string statement, IDictionary<string, object> parameters)
-        {
-            Manager.TraceStatement(statement);
-            return Manager.ProfileQuery(() => base.Run(statement, parameters));
-        }
-        public override IStatementResult Run(string statement, object parameters)
-        {
-            Manager.TraceStatement(statement);
-            return Manager.ProfileQuery(() => base.Run(statement, parameters));
-        }
-        public override Task<IStatementResultCursor> RunAsync(Statement statement)
-        {
-            Manager.TraceStatement(statement.Text);
-            return Manager.ProfileQueryAsync(() => base.RunAsync(statement));
-        }
-        public override Task<IStatementResultCursor> RunAsync(string statement)
-        {
-            Manager.TraceStatement(statement);
-            return Manager.ProfileQueryAsync(() => base.RunAsync(statement));
-        }
-        public override Task<IStatementResultCursor> RunAsync(string statement, IDictionary<string, object> parameters)
-        {
-            Manager.TraceStatement(statement);
-            return Manager.ProfileQueryAsync(() => base.RunAsync(statement, parameters));
-        }
-        public override Task<IStatementResultCursor> RunAsync(string statement, object parameters)
-        {
-            Manager.TraceStatement(statement);
-            return Manager.ProfileQueryAsync(() => base.RunAsync(statement, parameters));
-        }
         public override void Dispose()
         {
             base.Dispose();

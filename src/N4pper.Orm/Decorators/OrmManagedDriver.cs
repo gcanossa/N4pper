@@ -9,8 +9,7 @@ namespace N4pper.Decorators
     public class OrmManagedDriver : DriverDecorator, IOrmStatementRunner
     {
         public GraphContext Context { get; protected set; }
-        public N4pperManager Manager { get; protected set; }
-        public OrmManagedDriver(IDriver driver, N4pperManager manager, GraphContext context) : base(driver)
+        public OrmManagedDriver(IDriver driver, N4pperManager manager, GraphContext context) : base(driver, manager)
         {
             Manager = manager;
             Context = context ?? throw new ArgumentNullException(nameof(context));

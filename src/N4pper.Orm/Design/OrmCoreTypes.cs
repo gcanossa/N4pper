@@ -10,6 +10,10 @@ namespace N4pper.Orm.Design
 {
     internal static class OrmCoreTypes
     {
+        static OrmCoreTypes()
+        {
+            Entity<Entities.Connection>(p => new { p.SourcePropertyName, p.DestinationPropertyName, p.Version });
+        }
         internal static Dictionary<Type, MethodInfo> AddNode { get; } = new Dictionary<Type, MethodInfo>();
         internal static Dictionary<Type, MethodInfo> DelNode { get; } = new Dictionary<Type, MethodInfo>();
         internal static Dictionary<Type, MethodInfo> CopyProps { get; } = new Dictionary<Type, MethodInfo>();
@@ -93,6 +97,9 @@ namespace N4pper.Orm.Design
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
 
+            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(type))
+                keyProps = new string[] { nameof(Entities.ExplicitConnection.SourcePropertyName), nameof(Entities.ExplicitConnection.DestinationPropertyName), nameof(Entities.ExplicitConnection.Version) };
+
             if (keyProps == null || keyProps.Count() == 0)
                 keyProps = new[] { Constants.IdentityPropertyName };
 
@@ -121,7 +128,7 @@ namespace N4pper.Orm.Design
         internal static bool IsIdentityKeyNotSet<T>(this T ext)
         {
             PropertyInfo info = typeof(T).GetProperty(Constants.IdentityPropertyName);
-            object value = info.GetValue(ext);
+            object value = ObjectExtensions.Configuration.Get(info,ext);
             return value == null || value.Equals(ObjectExtensions.GetDefault(info.PropertyType));
         }
     }

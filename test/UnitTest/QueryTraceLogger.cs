@@ -9,7 +9,6 @@ namespace UnitTest
 {
     public class QueryTraceLogger : IQueryProfiler
     {
-        protected ILogger Logger { get; set; }
         public static string LastStatement { get; private set; }
 
         public static int QueryCount { get; private set; } = 0;
@@ -21,23 +20,14 @@ namespace UnitTest
         public static double ErrorTimeLast { get; private set; } = 0;
         public static Exception ErrorLast { get; private set; }
 
-        public QueryTraceLogger(ILogger<QueryTraceLogger> logger)
+        public QueryTraceLogger()
         {
-            Logger = logger;
-        }
-        public void Trace(string query)
-        {
-            Logger.LogDebug(query);
-            LastStatement = query;
         }
 
-        public void Increment()
+        public Action<Exception> Mark(string query)
         {
             QueryCount++;
-        }
-
-        public Action<Exception> Mark()
-        {
+            LastStatement = query;
             Stopwatch sw = Stopwatch.StartNew();
             return e => 
             {

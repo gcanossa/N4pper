@@ -2,68 +2,45 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace N4pper.Decorators
 {
-    public class DriverDecorator : IDriver
+    public class DriverDecorator : DriverDecoratorBase, IGraphManagedStatementRunner
     {
-        public IDriver Driver { get; protected set; }
-
-        public DriverDecorator(IDriver driver)
+        public N4pperManager Manager { get; protected set; }
+        public DriverDecorator(IDriver driver, N4pperManager manager) : base(driver)
         {
-            Driver = driver ?? throw new ArgumentNullException(nameof(driver));
+            Manager = manager;
         }
 
-        #region IDriver
-
-        public virtual Uri Uri => Driver.Uri;
-
-        public virtual void Close()
+        public override ISession Session()
         {
-            Driver.Close();
+            return base.Session().WithGraphManager(Manager);
         }
 
-        public virtual Task CloseAsync()
+        public override ISession Session(AccessMode defaultMode)
         {
-            return Driver.CloseAsync();
+            return base.Session(defaultMode).WithGraphManager(Manager);
         }
 
-        public virtual void Dispose()
+        public override ISession Session(string bookmark)
         {
-            Driver.Dispose();
+            return base.Session(bookmark).WithGraphManager(Manager);
         }
 
-        public virtual ISession Session()
+        public override ISession Session(AccessMode defaultMode, string bookmark)
         {
-            return Driver.Session();
+            return base.Session(defaultMode, bookmark).WithGraphManager(Manager);
         }
 
-        public virtual ISession Session(AccessMode defaultMode)
+        public override ISession Session(AccessMode defaultMode, IEnumerable<string> bookmarks)
         {
-            return Driver.Session(defaultMode);
+            return base.Session(defaultMode, bookmarks).WithGraphManager(Manager);
         }
 
-        public virtual ISession Session(string bookmark)
+        public override ISession Session(IEnumerable<string> bookmarks)
         {
-            return Driver.Session(bookmark);
+            return base.Session(bookmarks).WithGraphManager(Manager);
         }
-
-        public virtual ISession Session(AccessMode defaultMode, string bookmark)
-        {
-            return Driver.Session(defaultMode, bookmark);
-        }
-
-        public virtual ISession Session(AccessMode defaultMode, IEnumerable<string> bookmarks)
-        {
-            return Driver.Session(defaultMode, bookmarks);
-        }
-
-        public virtual ISession Session(IEnumerable<string> bookmarks)
-        {
-            return Driver.Session(bookmarks);
-        }
-
-        #endregion
     }
 }

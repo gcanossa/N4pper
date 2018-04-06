@@ -1,4 +1,5 @@
 ﻿using Neo4j.Driver.V1;
+using OMnG;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +24,7 @@ namespace N4pper.Queryable
         protected virtual Type QueryableType => typeof(QueryableNeo4jStatement<>);
         public virtual IQueryable CreateQuery(Expression expression)
         {
-            Type elementType = TypeSystem.GetElementType(expression.Type);
+            Type elementType = ObjectExtensions.GetElementType(expression.Type);
             try
             {
                 return (IQueryable)Activator.CreateInstance(QueryableType.MakeGenericType(elementType), new object[] { this, expression });

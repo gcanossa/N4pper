@@ -22,11 +22,12 @@ namespace UnitTest
         protected override void ConfigureServices(ServiceCollection sc)
         {
             sc.AddSingleton<IConfigurationRoot>(Configuration);
-            sc.AddN4pper()
+            sc.AddN4pperOGM()
                 .AddGraphContext<TestContext>(Configuration.GetConnectionString("DefaultConnection"));
-            sc.AddN4pper()
+            sc.AddN4pperOGM()
                 .AddGraphContext<GlobalTestContext>(Configuration.GetConnectionString("DefaultConnection"));
 
+            sc.AddN4pper();
             sc.AddTransient<IQueryProfiler, QueryTraceLogger>();
 
             sc.AddTransient<Neo4jServer_DriverBuilder>(provider => new Neo4jServer_DriverBuilder(Configuration));

@@ -71,8 +71,9 @@ namespace N4pper.Orm
             if (uuid != null)
                 sb.Append($", {uuid}");
             sb.Append($" SET {set} RETURN {n}");
-                        
-            return ext.ExecuteQuery<TResult>(sb.ToString(), value).First();
+
+            IRecord result = ext.Run(sb.ToString(), value).First();
+            return null;// (TResult)IStatementRunnerExtensions.ParseRecordValue<TResult>(result.Values[result.Keys[0]], typeof(TResult));
         }
         public static IEnumerable<TResult> AddOrUpdateNodes<TNode, TResult>(this ITransaction ext, IEnumerable<TNode> value)
             where TNode : class
@@ -181,7 +182,7 @@ namespace N4pper.Orm
 
                 rel.Props[Constants.IdentityPropertyName] = uuid;
                 set.Props[Constants.IdentityPropertyName] = uuid;
-            };
+            }
 
             string clause = (source==null || destination == null)? "MATCH" : "MERGE";
 
@@ -189,7 +190,8 @@ namespace N4pper.Orm
             if (uuid != null) sb.Append($", {uuid}");
             sb.Append($" SET {set} RETURN {r}");
 
-            return ext.ExecuteQuery<TResult>(sb.ToString(), parameters).First();
+            IRecord result = ext.Run(sb.ToString(), parameters).First();
+            return null;// (TResult)IStatementRunnerExtensions.ParseRecordValue<TResult>(result.Values[result.Keys[0]], typeof(TResult));
         }
         public static IEnumerable<TResult> AddOrUpdateRels<TRel, TResult, S, D>(this ITransaction ext, IEnumerable<Tuple<TRel, S, D>> value = null)
             where TRel : class

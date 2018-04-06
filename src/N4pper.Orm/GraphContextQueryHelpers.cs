@@ -46,7 +46,7 @@ namespace N4pper.Orm
             foreach (string key in record.Keys.Where(p=>p!="this"))
             {
                 PropertyInfo pinfo = type.GetProperty(key);
-                Type ptype = TypeSystem.GetElementType(pinfo.PropertyType);
+                Type ptype = ObjectExtensions.GetElementType(pinfo.PropertyType);
                 if (typeof(IList).IsAssignableFrom(pinfo.PropertyType))
                 {
                     IEnumerable<Tuple<IRelationship, IDictionary<string, object>>> coll = ((List<object>)record[key])
@@ -127,13 +127,13 @@ namespace N4pper.Orm
                             rel.Source = RecursiveMap(rec as IDictionary<string, object>, rel.GetType().BaseType.GetGenericArguments()[0], objectPool);
                         }
 
-                        pinfo.SetValue(res, rel);
+                        ObjectExtensions.Configuration.Set(pinfo,res, rel);
                         WireKnownRelationship(pinfo, res, rel);
                     }
                     else
                     {
                         object obj = RecursiveMap(rec, pinfo.PropertyType, objectPool);
-                        pinfo.SetValue(res, obj);
+                        ObjectExtensions.Configuration.Set(pinfo,res, obj);
                         WireKnownRelationship(pinfo, res, obj);
                     }
                 }
@@ -146,9 +146,9 @@ namespace N4pper.Orm
                 throw new ArgumentException($"the property type is not a collection type", nameof(pinfo));
 
             Type ptype = typeof(IEnumerable).IsAssignableFrom(pinfo.PropertyType) ? pinfo.PropertyType.GetGenericArguments()[0] : pinfo.PropertyType;
-            IList value = pinfo.GetValue(obj) as IList;
+            IList value = ObjectExtensions.Configuration.Get(pinfo,obj) as IList;
             if (value == null)
-                pinfo.SetValue(obj, value = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(ptype)));
+                ObjectExtensions.Configuration.Set(pinfo,obj, value = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(ptype)));
 
             return value;
         }
@@ -174,7 +174,7 @@ namespace N4pper.Orm
                     }
                     else
                     {
-                        dprop.SetValue(destinationObj, sourceObj);
+                        ObjectExtensions.Configuration.Set(dprop,destinationObj, sourceObj);
                     }
                 }
                 if (OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(sourceProp) && OrmCoreTypes.KnownTypeDestinationRelations[sourceProp] != null)
@@ -189,7 +189,7 @@ namespace N4pper.Orm
                     }
                     else
                     {
-                        dprop.SetValue(destinationObj, sourceObj);
+                        ObjectExtensions.Configuration.Set(dprop,destinationObj, sourceObj);
                     }
                 }
             }

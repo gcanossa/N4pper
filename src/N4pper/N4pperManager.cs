@@ -1,5 +1,6 @@
 ﻿using N4pper.Diagnostic;
 using Neo4j.Driver.V1;
+using OMnG;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,23 +12,32 @@ namespace N4pper
     {
         public N4pperOptions Options { get; protected set; }
 
-        protected IQueryProfiler Profiler { get; set; }
+        public IQueryProfiler Profiler { get; protected set; }
+        public IQueryParamentersMangler ParamentersMangler { get; protected set; }
+        public IRecordHandler RecordHandler { get; protected set; }
 
-        public N4pperManager(N4pperOptions options, IQueryProfiler profiler)
+        public OMnG.ObjectExtensionsConfiguration ObjectExtensionsConfiguration { get; protected set; }
+        public OMnG.TypeExtensionsConfiguration TypeExtensionsConfiguration { get; protected set; }
+
+        public N4pperManager(
+            N4pperOptions options, 
+            IQueryProfiler profiler, 
+            IQueryParamentersMangler paramMangler, 
+            IRecordHandler recordHandler,
+            OMnG.ObjectExtensionsConfiguration objExtConf,
+            OMnG.TypeExtensionsConfiguration typeExtConf)
         {
-            Options = options;
+            Options = options ?? new N4pperOptions();
             Profiler = profiler;
+            ParamentersMangler = paramMangler ?? new DefaultParameterMangler();
+            RecordHandler = recordHandler ?? new DefaultRecordHanlder();
+            ObjectExtensionsConfiguration = objExtConf ?? new N4pper.ObjectExtensionsConfiguration();
+            TypeExtensionsConfiguration = typeExtConf ?? new N4pper.TypeExtensionsConfiguration();
         }
-
-        public void TraceStatement(string statement)
+        
+        public IStatementResult ProfileQuery(string statement, Func<IStatementResult> query)
         {
-            Profiler?.Trace(statement);
-            Profiler?.Increment();
-        }
-
-        public IStatementResult ProfileQuery(Func<IStatementResult> query)
-        {
-            Action<Exception> time = Profiler?.Mark();
+            Action<Exception> time = Profiler?.Mark(statement);
             try
             {
                 IStatementResult r = query();
@@ -40,9 +50,9 @@ namespace N4pper
                 throw e;
             }
         }
-        public Task<IStatementResultCursor> ProfileQueryAsync(Func<Task<IStatementResultCursor>> query)
+        public Task<IStatementResultCursor> ProfileQueryAsync(string statement, Func<Task<IStatementResultCursor>> query)
         {
-            Action<Exception> time = Profiler?.Mark();
+            Action<Exception> time = Profiler?.Mark(statement);
             try
             {
                 Task<IStatementResultCursor> r = query();
@@ -60,6 +70,18 @@ namespace N4pper
                 time?.Invoke(e);
                 throw e;
             }
+        }
+
+        public IDisposable ScopeOMnG()
+        {
+            IDisposable obj = ObjectExtensions.ConfigScope(ObjectExtensionsConfiguration);
+            IDisposable tpy = TypeExtensions.ConfigScope(TypeExtensionsConfiguration);
+
+            return new CustomDisposable(()=> 
+            {
+                obj?.Dispose();
+                tpy?.Dispose();
+            });
         }
     }
 }

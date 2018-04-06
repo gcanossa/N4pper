@@ -1,4 +1,5 @@
 ﻿using N4pper.Queryable.Translators;
+using OMnG;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,11 +39,11 @@ namespace N4pper.Queryable
             
             if (last != null)
             {
-                return TypeSystem.GetElementType(last.Arguments[0].Type);
+                return ObjectExtensions.GetElementType(last.Arguments[0].Type);
             }
             else
             {
-                return TypeSystem.GetElementType(expression.Type);
+                return ObjectExtensions.GetElementType(expression.Type);
             }
         }
 

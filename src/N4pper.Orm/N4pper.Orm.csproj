@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OMnG" Version="0.1.13" />
+    <PackageReference Include="OMnG" Version="0.1.26" />
   </ItemGroup>
 
   <ItemGroup>

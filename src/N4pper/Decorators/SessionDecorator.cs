@@ -1,84 +1,106 @@
-﻿using Neo4j.Driver.V1;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using N4pper.Diagnostic;
+using Neo4j.Driver.V1;
 
 namespace N4pper.Decorators
 {
-    public class SessionDecorator : StatementRunnerDecorator, ISession
+    public class SessionDecorator : SessionDecoratorBase, IGraphManagedStatementRunner
     {
-        public ISession Session { get; protected set; }
-        
-        public SessionDecorator(ISession session) : base(session)
+        public N4pperManager Manager { get; protected set; }
+        public SessionDecorator(ISession session, N4pperManager manager) : base(session)
         {
-            Session = session ?? throw new ArgumentNullException(nameof(session));
+            Manager = manager;
         }
 
-        #region ISession
-
-        public virtual string LastBookmark => Session.LastBookmark;
-
-        public virtual ITransaction BeginTransaction()
+        public override ITransaction BeginTransaction()
         {
-            return Session.BeginTransaction();
+            return new TransactionDecorator(base.BeginTransaction(), Manager);
+        }
+        public override ITransaction BeginTransaction(string bookmark)
+        {
+            return new TransactionDecorator(base.BeginTransaction(bookmark), Manager);
+        }
+        public override Task<ITransaction> BeginTransactionAsync()
+        {
+            return Task.Run<ITransaction>(async () => new TransactionDecorator(await base.BeginTransactionAsync(), Manager));
+        }
+        public override void ReadTransaction(Action<ITransaction> work)
+        {
+            base.ReadTransaction(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override T ReadTransaction<T>(Func<ITransaction, T> work)
+        {
+            return base.ReadTransaction(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override Task ReadTransactionAsync(Func<ITransaction, Task> work)
+        {
+            return base.ReadTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override Task<T> ReadTransactionAsync<T>(Func<ITransaction, Task<T>> work)
+        {
+            return base.ReadTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override void WriteTransaction(Action<ITransaction> work)
+        {
+            base.WriteTransaction(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override T WriteTransaction<T>(Func<ITransaction, T> work)
+        {
+            return base.WriteTransaction(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override Task WriteTransactionAsync(Func<ITransaction, Task> work)
+        {
+            return base.WriteTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+        }
+        public override Task<T> WriteTransactionAsync<T>(Func<ITransaction, Task<T>> work)
+        {
+            return base.WriteTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
         }
 
-        public virtual ITransaction BeginTransaction(string bookmark)
+
+        public override IStatementResult Run(Statement statement)
         {
-            return Session.BeginTransaction(bookmark);
+            return Manager.ProfileQuery(statement.Text,() => base.Run(statement));
+        }
+        public override IStatementResult Run(string statement)
+        {
+            return Manager.ProfileQuery(statement,() => base.Run(statement));
+        }
+        public override IStatementResult Run(string statement, IDictionary<string, object> parameters)
+        {
+            return Manager.ProfileQuery(statement, () => base.Run(statement, parameters));
+        }
+        public override IStatementResult Run(string statement, object parameters)
+        {
+            return Manager.ProfileQuery(statement, () => base.Run(statement, parameters));
+        }
+        public override Task<IStatementResultCursor> RunAsync(Statement statement)
+        {
+            return Manager.ProfileQueryAsync(statement.Text, () => base.RunAsync(statement));
+        }
+        public override Task<IStatementResultCursor> RunAsync(string statement)
+        {
+            return Manager.ProfileQueryAsync(statement, () => base.RunAsync(statement));
+        }
+        public override Task<IStatementResultCursor> RunAsync(string statement, IDictionary<string, object> parameters)
+        {
+            return Manager.ProfileQueryAsync(statement, () => base.RunAsync(statement, parameters));
+        }
+        public override Task<IStatementResultCursor> RunAsync(string statement, object parameters)
+        {
+            return Manager.ProfileQueryAsync(statement, () => base.RunAsync(statement, parameters));
+        }
+        public override void Dispose()
+        {
+            base.Dispose();
         }
 
-        public virtual Task<ITransaction> BeginTransactionAsync()
+        protected override IDictionary<string, object> FixParameters(IDictionary<string, object> param)
         {
-            return Session.BeginTransactionAsync();
+            return Manager.ParamentersMangler.Mangle(param);
         }
-
-        public virtual T ReadTransaction<T>(Func<ITransaction, T> work)
-        {
-            return Session.ReadTransaction<T>(work);
-        }
-
-        public virtual Task<T> ReadTransactionAsync<T>(Func<ITransaction, Task<T>> work)
-        {
-            return Session.ReadTransactionAsync<T>(work);
-        }
-
-        public virtual void ReadTransaction(Action<ITransaction> work)
-        {
-            Session.ReadTransaction(work);
-        }
-
-        public virtual Task ReadTransactionAsync(Func<ITransaction, Task> work)
-        {
-            return Session.ReadTransactionAsync(work);
-        }
-
-        public virtual T WriteTransaction<T>(Func<ITransaction, T> work)
-        {
-            return Session.WriteTransaction<T>(work);
-        }
-
-        public virtual Task<T> WriteTransactionAsync<T>(Func<ITransaction, Task<T>> work)
-        {
-            return Session.WriteTransactionAsync<T>(work);
-        }
-
-        public virtual void WriteTransaction(Action<ITransaction> work)
-        {
-            Session.WriteTransaction(work);
-        }
-
-        public virtual Task WriteTransactionAsync(Func<ITransaction, Task> work)
-        {
-            return Session.WriteTransactionAsync(work);
-        }
-
-        public virtual Task CloseAsync()
-        {
-            return Session.CloseAsync();
-        }
-
-        #endregion
     }
 }

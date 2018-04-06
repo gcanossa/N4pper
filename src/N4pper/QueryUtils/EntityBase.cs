@@ -1,6 +1,7 @@
 ﻿using OMnG;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -49,14 +50,18 @@ namespace N4pper.QueryUtils
                     DateTimeOffset d = value is DateTimeOffset? (DateTimeOffset)value : (DateTime)value;
                     return d.ToUnixTimeMilliseconds().ToString();
                 }
-                else if (value.GetType() == typeof(TimeSpan) || value.GetType() == typeof(TimeSpan?))
+                else if (ObjectExtensions.IsTimeSpan(value.GetType()))
                 {
                     return ((TimeSpan)value).TotalMilliseconds.ToString();
                 }
                 else if (Type.GetTypeCode(value.GetType()) == TypeCode.String)
                     return $"'{value}'";
                 else if (ObjectExtensions.IsPrimitive(value.GetType()))
-                    return value.ToString();
+                {
+                    NumberFormatInfo nfi = new NumberFormatInfo();
+                    nfi.NumberDecimalSeparator = ".";
+                    return string.Format(nfi, "{0}", value);
+                }
                 else
                     throw new ArgumentException($"Unsupported type: '{value.GetType().FullName}'", nameof(value));
             }
@@ -64,7 +69,16 @@ namespace N4pper.QueryUtils
 
         protected virtual string SerializeProps()
         {
-            return "{" + string.Join(",", Props.Select(p => $"{p.Key}:{HandleValue(p.Value)}")) + "}";
+            using (ManagerAccess.Manager.ScopeOMnG())
+            {
+                return "{" + string.Join(",", Props
+                    .Where(
+                    p => 
+                        Type==null ||
+                        ObjectExtensions.IsPrimitive(Type.GetProperty(p.Key)?.PropertyType ?? typeof(IList<object>)) && 
+                        (Type.GetProperty(p.Key)?.CanRead ?? false) && (Type.GetProperty(p.Key)?.CanWrite ?? false))
+                    .Select(p => $"{p.Key}:{HandleValue(p.Value)}")) + "}";
+            }
         }
 
         public override string ToString()

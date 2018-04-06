@@ -95,27 +95,7 @@ namespace UnitTest
         {
             public long Id { get; set; }
         }
-
-        public class TestQueryTracer : IQueryProfiler
-        {
-            public void Trace(string query)
-            {
-                Queries.Push(query);
-            }
-
-            public void Increment()
-            {
-                
-            }
-
-            public Action<Exception> Mark()
-            {
-                return null;
-            }
-
-            public Stack<string> Queries { get; set; } = new Stack<string>();
-        }
-
+        
         #endregion
 
         [TestPriority(0)]

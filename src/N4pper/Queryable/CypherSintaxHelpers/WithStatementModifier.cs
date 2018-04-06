@@ -39,14 +39,15 @@ namespace N4pper.Queryable.CypherSintaxHelpers
                     {
                         List<Tuple<string, string>> querySymbols = new List<Tuple<string, string>>();
                         foreach (Match mq in Regex.Matches(BaseStatement.Substring(
-                            prevKey==null && Tokens[currKey].Index !=0 ? 0 : Tokens[prevKey].Index + Tokens[prevKey].Length, 
-                            Tokens[currKey].Index - (Tokens[prevKey].Index + Tokens[prevKey].Length)
+                            prevKey == null && Tokens[currKey].Index != 0 ? 0 : Tokens[prevKey].Index + Tokens[prevKey].Length,
+                            prevKey == null && Tokens[currKey].Index != 0 ? Tokens[currKey].Index : Tokens[currKey].Index - (Tokens[prevKey].Index + Tokens[prevKey].Length)
                             ), @"[\(\[]\s*([\w_]+)(?:\s*|:)", RegexOptions.IgnoreCase))
                         {
                             if (!querySymbols.Any(p => p.Item1 == mq.Groups[1].Value))
                                 querySymbols.Add(new Tuple<string, string>(mq.Groups[1].Value, null));
                         }
-                        CurrentVariables[currKey].AddRange(CurrentVariables[prevKey].Select(p => new Tuple<string, string>(p.Item1, null)));
+                        if(prevKey!=null)
+                            CurrentVariables[currKey].AddRange(CurrentVariables[prevKey].Select(p => new Tuple<string, string>(p.Item1, null)));
                         CurrentVariables[currKey].AddRange(querySymbols);
                     }
                     else if (!string.IsNullOrEmpty(m.Groups[2].Value))

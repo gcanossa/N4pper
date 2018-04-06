@@ -18,93 +18,18 @@ namespace N4pper
     {
         #region helpers
 
-        public static Dictionary<string, object> FixParameters(IDictionary<string, object> param)
-        {
-            Dictionary<string, object> result = new Dictionary<string, object>();
-
-            if (param == null)
-                return result;
-
-            foreach (KeyValuePair<string, object> kv in param.Where(p=>p.Value == null || ObjectExtensions.IsPrimitive(p.Value.GetType())))
-            {
-                if (kv.Value == null)
-                    result.Add(kv.Key, kv.Value);
-                else if (kv.Value.IsDateTime())
-                {
-                    DateTimeOffset d = kv.Value is DateTimeOffset ? (DateTimeOffset)kv.Value : (DateTime)kv.Value;
-                    result.Add(kv.Key, d.ToUnixTimeMilliseconds());
-                }
-                else if (kv.Value.GetType() == typeof(TimeSpan) || kv.Value.GetType() == typeof(TimeSpan?))
-                    result.Add(kv.Key, ((TimeSpan)kv.Value).TotalMilliseconds);
-                else
-                    result.Add(kv.Key, kv.Value);
-            }
-
-            return result;
-        }
-        public static IDictionary<string, object> GetPropDictionary(object entity)
-        {
-            if (entity is IEntity)
-                return ((IEntity)entity).Properties.ToDictionary(p => p.Key, p => p.Value);
-            else if (entity is IDictionary<string, object>)
-                return ((Dictionary<string, object>)entity);
-            else
-                return null;
-        }
-        public static T MapEntity<T>(IEntity entity) where T : class
-        {
-            object obj = null;
-            if(entity is INode)
-            {
-                obj = ((INode)entity).Labels.GetTypesFromLabels(new N4pperTypeExtensionsConfiguration()).GetInstanceOfMostSpecific();
-            }
-            else if(entity is IRelationship)
-            {
-                obj = new string[] { ((IRelationship)entity).Type }.GetTypesFromLabels(new N4pperTypeExtensionsConfiguration()).GetInstanceOfMostSpecific();
-            }
-
-            return ((T)obj).CopyProperties(entity.Properties.ToDictionary(p=>p.Key,p=>p.Value));
-        }
-        public static object ParseRecordValue<T>(object value, Type type) where T : class
-        {
-            if (ObjectExtensions.IsCollection(typeof(T)))
-            {
-                if (!TypeSystem.IsEnumerable(typeof(T)))
-                    throw new InvalidOperationException("To map collections use IEnumerable`1");
-
-                MethodInfo m = typeof(IStatementRunnerExtensions).GetMethod($"{nameof(ParseRecordsValue)}", BindingFlags.NonPublic | BindingFlags.Static);
-                m = m.MakeGenericMethod(typeof(T).GetGenericArguments());
-                return m.Invoke(null, new object[] { value, type.GetGenericArguments()[0] });
-            }
-            else
-            {
-                if (value is IList<object>)
-                    return ParseRecordsValue<T>((IList<object>)value, type);
-                if (value is IEntity && typeof(T).IsAssignableFrom(type))
-                    return MapEntity<T>((IEntity)value);
-                else
-                    return ObjectExtensions.GetInstanceOf(type, GetPropDictionary(value));
-            }
-        }
-        public static IList ParseRecordsValue<T>(IList<object> value, Type type) where T : class
-        {
-            IList lst = TypeSystem.GetListOf(type);
-            foreach (object item in value.Select(p => ParseRecordValue<T>(p, type)))
-            {
-                lst.Add(item);
-            }
-            return lst;
-        }
+        private static IQueryParamentersMangler ParamMangler = new DefaultParameterMangler();
+        private static IRecordHandler RecordHandler = new DefaultRecordHanlder();
         
-        internal static Statement GetStatement(string query, object param)
+        private static Statement GetStatement(string query, object param)
         {
             query = query ?? throw new ArgumentNullException(nameof(query));
 
             if (param != null)
                 if (param is IDictionary<string, object>)
-                    return new Statement(query, FixParameters((IDictionary<string, object>)param));
+                    return new Statement(query, ParamMangler.Mangle((IDictionary<string, object>)param));
                 else
-                    return new Statement(query, FixParameters(param.ToPropDictionary()));
+                    return new Statement(query, ParamMangler.Mangle(param.ToPropDictionary()));
             else
                 return new Statement(query);
         }
@@ -136,7 +61,7 @@ namespace N4pper
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
                     throw new InvalidOperationException("To map collections use IEnumerable`1");
 
                 return new QueryableNeo4jStatement<T>(
@@ -144,7 +69,7 @@ namespace N4pper
                 () => GetStatement(query, param), 
                 (result, t) => 
                 {
-                    return ParseRecordValue<T>(result.Values[result.Keys[0]], t);
+                    return RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t);
                 });
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T>(this IStatementRunner ext, string query, params object[] param)
@@ -169,9 +94,9 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -180,8 +105,8 @@ namespace N4pper
                 (result, t) =>
                 {
                     return map(
-                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
-                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1))
+                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]],  typeof(T), t),
+                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1))
                         );
                 });
         }
@@ -206,11 +131,11 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T2)) && !TypeSystem.IsEnumerable(typeof(T2)))
+            if (ObjectExtensions.IsCollection(typeof(T2)) && !ObjectExtensions.IsEnumerable(typeof(T2)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -219,9 +144,9 @@ namespace N4pper
                 (result, t) =>
                 {
                     return map(
-                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
-                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1)),
-                        (T2)ParseRecordValue<T2>(result.Values[result.Keys[2]], typeof(T2))
+                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t),
+                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
+                        (T2)RecordHandler.ParseRecordValue(result.Values[result.Keys[2]], typeof(T2), typeof(T2))
                         );
                 });
         }
@@ -248,13 +173,13 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T2)) && !TypeSystem.IsEnumerable(typeof(T2)))
+            if (ObjectExtensions.IsCollection(typeof(T2)) && !ObjectExtensions.IsEnumerable(typeof(T2)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T3)) && !TypeSystem.IsEnumerable(typeof(T3)))
+            if (ObjectExtensions.IsCollection(typeof(T3)) && !ObjectExtensions.IsEnumerable(typeof(T3)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -263,10 +188,10 @@ namespace N4pper
                 (result, t) =>
                 {
                     return map(
-                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
-                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1)),
-                        (T2)ParseRecordValue<T2>(result.Values[result.Keys[2]], typeof(T2)),
-                        (T3)ParseRecordValue<T3>(result.Values[result.Keys[3]], typeof(T3))
+                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t),
+                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
+                        (T2)RecordHandler.ParseRecordValue(result.Values[result.Keys[2]], typeof(T2), typeof(T2)),
+                        (T3)RecordHandler.ParseRecordValue(result.Values[result.Keys[3]], typeof(T3), typeof(T3))
                         );
                 });
         }
@@ -295,15 +220,15 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !TypeSystem.IsEnumerable(typeof(T)))
+            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !TypeSystem.IsEnumerable(typeof(T1)))
+            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T2)) && !TypeSystem.IsEnumerable(typeof(T2)))
+            if (ObjectExtensions.IsCollection(typeof(T2)) && !ObjectExtensions.IsEnumerable(typeof(T2)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T3)) && !TypeSystem.IsEnumerable(typeof(T3)))
+            if (ObjectExtensions.IsCollection(typeof(T3)) && !ObjectExtensions.IsEnumerable(typeof(T3)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T4)) && !TypeSystem.IsEnumerable(typeof(T4)))
+            if (ObjectExtensions.IsCollection(typeof(T4)) && !ObjectExtensions.IsEnumerable(typeof(T4)))
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -312,11 +237,11 @@ namespace N4pper
                 (result, t) =>
                 {
                     return map(
-                        (T)ParseRecordValue<T>(result.Values[result.Keys[0]], t),
-                        (T1)ParseRecordValue<T1>(result.Values[result.Keys[1]], typeof(T1)),
-                        (T2)ParseRecordValue<T2>(result.Values[result.Keys[2]], typeof(T2)),
-                        (T3)ParseRecordValue<T3>(result.Values[result.Keys[3]], typeof(T3)),
-                        (T4)ParseRecordValue<T4>(result.Values[result.Keys[4]], typeof(T4))
+                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t),
+                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
+                        (T2)RecordHandler.ParseRecordValue(result.Values[result.Keys[2]], typeof(T2), typeof(T2)),
+                        (T3)RecordHandler.ParseRecordValue(result.Values[result.Keys[3]], typeof(T3), typeof(T3)),
+                        (T4)RecordHandler.ParseRecordValue(result.Values[result.Keys[4]], typeof(T4), typeof(T4))
                         );
                 });
         }

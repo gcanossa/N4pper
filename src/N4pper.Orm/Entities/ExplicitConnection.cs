@@ -6,7 +6,6 @@ namespace N4pper.Orm.Entities
 {
     public abstract class ExplicitConnection
     {
-        public int Id { get; internal set; }
         public virtual object Source { get; set; }
         public virtual object Destination { get; set; }
 

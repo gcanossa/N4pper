@@ -95,12 +95,12 @@ namespace N4pper.Orm
                 graph.Index.Add(obj);
                 
                 foreach (PropertyInfo pInfo in obj.GetType().GetProperties()
-                    .Where(p => !ObjectExtensions.IsPrimitive(p.PropertyType) && p.GetValue(obj) != null))
+                    .Where(p => !ObjectExtensions.IsPrimitive(p.PropertyType) && ObjectExtensions.Configuration.Get(p,obj) != null))
                 {
-                    Type ienumerable = TypeSystem.FindIEnumerable(pInfo.PropertyType);
-                    if (ienumerable != null && !ObjectExtensions.IsPrimitive(TypeSystem.GetElementType(ienumerable)))
+                    Type ienumerable = ObjectExtensions.FindIEnumerable(pInfo.PropertyType);
+                    if (ienumerable != null && !ObjectExtensions.IsPrimitive(ObjectExtensions.GetElementType(ienumerable)))
                     {
-                        object tmp = pInfo.GetValue(obj);
+                        object tmp = ObjectExtensions.Configuration.Get(pInfo,obj);
                         List<object> targets = new List<object>();
                         foreach (object value in ((IEnumerable)tmp))
                         {
@@ -114,7 +114,7 @@ namespace N4pper.Orm
                     }
                     else
                     {
-                        object value = pInfo.GetValue(obj);
+                        object value = ObjectExtensions.Configuration.Get(pInfo,obj);
                         TraverseForPrepare(obj, value, graph);
                         graph.Paths.Add(new Path(graph, pInfo, obj, new[] { value }));
                     }
@@ -123,7 +123,7 @@ namespace N4pper.Orm
         }
         private static void FixGraphReferences(StoringGraph graph)
         {
-            foreach (Path path in graph.Paths.Where(p => typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType))).ToList())
+            foreach (Path path in graph.Paths.Where(p => typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType))).ToList())
             {
                 if (
                     OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property) &&
@@ -148,12 +148,12 @@ namespace N4pper.Orm
                     FixExplicitConnectionSource(graph, path);
                 }
             }
-            foreach (Path path in graph.Paths.Where(p => typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType))).ToList())
+            foreach (Path path in graph.Paths.Where(p => typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType))).ToList())
                 CheckExplicitConnection(graph, path);
 
             foreach (Path path in graph.Paths
                 .Where(p => 
-                    !typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+                    !typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)) &&
                     !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType())))
             {
                 if (OrmCoreTypes.KnownTypeSourceRelations.ContainsKey(path.Property))
@@ -171,14 +171,14 @@ namespace N4pper.Orm
             }
             foreach (Path path in graph.Paths
                 .Where(p =>
-                    !typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+                    !typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)) &&
                     !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType())))
                 CheckImplicitConnection(graph, path);
         }
         private static void PruneEquivalentPaths(StoringGraph graph)
         {
             IEnumerable<Path> notExplicitDsts = graph.Paths.Where(p =>
-                    !typeof(ExplicitConnection).IsAssignableFrom(TypeSystem.GetElementType(p.Property.PropertyType)) &&
+                    !typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)) &&
                     !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType()) &&
                     OrmCoreTypes.KnownTypeDestinationRelations.ContainsKey(p.Property) &&
                     OrmCoreTypes.KnownTypeDestinationRelations[p.Property] != null
@@ -278,16 +278,16 @@ namespace N4pper.Orm
 
         private static void FixNullImplicitConnection(StoringGraph graph, Path path, object dstOrigin, PropertyInfo pinfo)
         {
-            if (TypeSystem.HasEnumerable(pinfo.PropertyType))
+            if (ObjectExtensions.HasEnumerable(pinfo.PropertyType))
             {
                 if (!typeof(IList).IsAssignableFrom(pinfo.PropertyType))
                     throw new Exception("The propery is immutable. Unable to fix connections.");
                 else
                 {
-                    if (pinfo.GetValue(dstOrigin) == null)
-                        pinfo.SetValue(dstOrigin, Activator.CreateInstance(pinfo.PropertyType));
+                    if (ObjectExtensions.Configuration.Get(pinfo,dstOrigin) == null)
+                        ObjectExtensions.Configuration.Set(pinfo,dstOrigin, Activator.CreateInstance(pinfo.PropertyType));
 
-                    IList lst = (IList)pinfo.GetValue(dstOrigin);
+                    IList lst = (IList)ObjectExtensions.Configuration.Get(pinfo,dstOrigin);
                     lst.Add(path.Origin);
                     List<object> objs = new List<object>();
                     foreach (object item in lst)
@@ -297,19 +297,19 @@ namespace N4pper.Orm
             }
             else
             {
-                pinfo.SetValue(dstOrigin, path.Origin);
+                ObjectExtensions.Configuration.Set(pinfo,dstOrigin, path.Origin);
                 graph.Paths.Add(new Path(graph, pinfo, dstOrigin, new[] { path.Origin }));
             }
         }
         private static void FixMissingImplicitConnection(StoringGraph graph, Path path, Path errorPath, object dstOrigin, PropertyInfo pinfo)
         {
-            if (TypeSystem.HasEnumerable(pinfo.PropertyType))
+            if (ObjectExtensions.HasEnumerable(pinfo.PropertyType))
             {
                 if (!typeof(IList).IsAssignableFrom(pinfo.PropertyType))
                     throw new Exception("The propery is immutable. Unable to fix connections.");
                 else
                 {
-                    IList lst = (IList)pinfo.GetValue(dstOrigin);
+                    IList lst = (IList)ObjectExtensions.Configuration.Get(pinfo,dstOrigin);
                     lst.Add(path.Origin);
                     List<object> objs = new List<object>();
                     foreach (object item in lst)
@@ -320,7 +320,7 @@ namespace N4pper.Orm
             }
             else
             {
-                pinfo.SetValue(dstOrigin, path.Origin);
+                ObjectExtensions.Configuration.Set(pinfo,dstOrigin, path.Origin);
                 graph.Paths.Add(new Path(graph, pinfo, dstOrigin, new[] { path.Origin }));
                 graph.Paths.Remove(errorPath);
             }

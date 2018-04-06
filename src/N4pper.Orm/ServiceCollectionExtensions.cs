@@ -58,7 +58,7 @@ namespace N4pper.Orm
 
         #endregion
 
-        public static IGraphContextConfigurator AddN4pper(this IServiceCollection ext)
+        public static IGraphContextConfigurator AddN4pperOGM(this IServiceCollection ext)
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 

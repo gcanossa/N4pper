@@ -13,10 +13,9 @@ namespace N4pper.Queryable
 {
     public class CypherQueryContext
     {
-        // Executes the expression tree that is passed to it.
         internal static object Execute<TResult>(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper, Expression expression)
         {
-            bool IsEnumerable = TypeSystem.IsEnumerable(typeof(TResult));
+            bool IsEnumerable = ObjectExtensions.IsEnumerable(typeof(TResult));
             Type typeResult;
 
             QueryTranslator tranaslator = new QueryTranslator();
@@ -55,11 +54,11 @@ namespace N4pper.Queryable
                     return mapper(r, typeResult);
                 }
                 else
-                    return Convert.ChangeType(r.Values[r.Keys[0]], terminal.Type);
+                    return Convert.ChangeType(r.Values[r.Keys[0]], terminal.Type);//can only be an aggregate numeric value
             }
             else
             {
-                System.Collections.IList lst = TypeSystem.GetListOf(typeResult);
+                System.Collections.IList lst = ObjectExtensions.GetListOf(typeResult);
                 foreach (object item in records.Select(p => mapper(p, typeResult)))
                 {
                     lst.Add(item);
