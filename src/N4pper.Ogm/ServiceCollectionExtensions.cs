@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using Neo4j.Driver.V1;
+using N4pper.Ogm.Core;
 
 namespace N4pper.Ogm
 {
@@ -63,6 +64,13 @@ namespace N4pper.Ogm
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
             ext.AddN4pper();
+            ext.AddSingleton<EntityManagerBase>(
+                new EntityManagerSelector(
+                    new CypherEntityManager(), 
+                    new Dictionary<Func<IStatementRunner, bool>, EntityManagerBase>()
+                    {
+                        { p => (p as IGraphManagedStatementRunner)?.IsApocAvailable ?? false, new ApocEntityManager() }
+                    }));
 
             return new GraphContextConfigurator(ext);
         }

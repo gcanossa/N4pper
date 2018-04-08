@@ -7,7 +7,7 @@ namespace N4pper.Ogm.Core
 {
     public class EntityChangeRelDeletion : EntityChangeDescriptor
     {
-        public EntityChangeRelDeletion(IOgmEntity entity) : base(entity)
+        public EntityChangeRelDeletion(Connection entity) : base(entity)
         {
         }
 

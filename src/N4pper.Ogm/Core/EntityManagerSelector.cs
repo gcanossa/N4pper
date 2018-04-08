@@ -46,12 +46,12 @@ namespace N4pper.Ogm.Core
             SelectManager(runner).DeleteRels(runner, entities);
         }
 
-        public override IEnumerable<IOgmEntity> UpdateNodes(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override IEnumerable<IOgmEntity> UpdateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             return SelectManager(runner).UpdateNodes(runner, entities);
         }
 
-        public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             return SelectManager(runner).UpdateRels(runner, entities);
         }

@@ -9,6 +9,8 @@ namespace N4pper.Ogm.Core
     {
         public EntityChangeNodeDeletion(IOgmEntity entity) : base(entity)
         {
+            if (entity is Connection)
+                throw new ArgumentException("A Connection cannot be used as node.", nameof(entity));
         }
 
         public override EntityChangeDescriptor Inverse => null;

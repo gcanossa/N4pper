@@ -15,9 +15,9 @@ namespace N4pper.Ogm.Core
         {
             Property = property ?? throw new ArgumentNullException(nameof(property));
 
-            if (IsCompatibleWith(property, oldValue))
+            if (!IsCompatibleWith(property, oldValue))
                 throw new ArgumentException("The value must be compatible with the property type", nameof(oldValue));
-            if (IsCompatibleWith(property, currentValue))
+            if (!IsCompatibleWith(property, currentValue))
                 throw new ArgumentException("The value must be compatible with the property type", nameof(currentValue));
 
             OldValue = oldValue;
@@ -26,7 +26,17 @@ namespace N4pper.Ogm.Core
 
         protected bool IsCompatibleWith(PropertyInfo property, object value)
         {
-            return property.PropertyType.IsValueType && value == null || property.PropertyType.IsAssignableFrom(value.GetType());
+            return !property.PropertyType.IsValueType && value == null || property.PropertyType.IsAssignableFrom(value.GetType());
+        }
+
+        public override bool Equals(object obj)
+        {
+            EntityChangeUpdate other = obj as EntityChangeUpdate;
+            return base.Equals(obj) && other?.Property==Property && other?.OldValue == OldValue && other?.CurrentValue == CurrentValue;
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode() ^ Property.GetHashCode() ^ OldValue.GetHashCode() ^ CurrentValue.GetHashCode();
         }
     }
 }

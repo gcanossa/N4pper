@@ -229,5 +229,19 @@ namespace UnitTest
             IList<int> val2 = (IList<int>)gen.CreateInterfaceProxyWithTarget(typeof(IList<int>), val, new TestInterceptor());
             val2.Add(1);
         }
+        [Trait("Category", nameof(CastleCoreTests))]
+        [Fact(DisplayName = nameof(Test8))]
+        public void Test8()
+        {
+            ProxyGenerator gen = new ProxyGenerator();
+
+            Items2 obj = new Items2() { Id = 3, Name = "pippo" };
+
+            Items2 prx = (Items2)gen.CreateClassProxyWithTarget(typeof(Items2), obj, new TestInterceptor());
+
+            Assert.True(prx is Items2);
+            Assert.True(prx is Items);
+            Assert.True(prx is IEntity);
+        }
     }
 }

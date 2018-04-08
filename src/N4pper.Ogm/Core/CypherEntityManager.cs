@@ -157,12 +157,12 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override IEnumerable<IOgmEntity> UpdateNodes(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override IEnumerable<IOgmEntity> UpdateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.EntityId != null);
+            entities = entities.Where(p => p != null && p.Item1.EntityId != null);
 
             if (entities.Count() == 0)
                 return null;
@@ -181,16 +181,16 @@ namespace N4pper.Ogm.Core
                 sb.Append($"SET {m}+={row}.{nameof(NodeEntity.Properties)} ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new NodeEntity(p).ToPropDictionary()).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new NodeEntity(p.Item1).ToPropDictionary().ExludeProperties(p.Item2 ?? new string[0])).ToList() }).ToList();
             }
         }
 
-        public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.EntityId != null);
+            entities = entities.Where(p => p != null && p.Item1.EntityId != null);
 
             if (entities.Count() == 0)
                 return null;
@@ -209,7 +209,7 @@ namespace N4pper.Ogm.Core
                 sb.Append($"SET {m}+={row}.{nameof(RelEntity.Properties)} ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p, -1, -1).ToPropDictionary()).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item1, -1, -1).ToPropDictionary().ExludeProperties(p.Item2 ?? new string[0])).ToList() }).ToList();
             }
         }
     }

@@ -14,5 +14,14 @@ namespace N4pper.Ogm.Core
         }
 
         public abstract EntityChangeDescriptor Inverse { get; }
+
+        public override bool Equals(object obj)
+        {
+            return obj != null && GetType().Equals(obj?.GetType()) && ((obj as EntityChangeDescriptor)?.Entity?.Equals(Entity)??false);
+        }
+        public override int GetHashCode()
+        {
+            return GetType().GetHashCode() ^ Entity.GetHashCode();
+        }
     }
 }
