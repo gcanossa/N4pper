@@ -1,7 +1,6 @@
 ﻿using AsIKnow.XUnitExtensions;
 using N4pper;
-using N4pper.Orm;
-using N4pper.Orm.Entities;
+using N4pper.Ogm;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
 using OMnG;
@@ -88,7 +87,7 @@ namespace UnitTest
             Assert.Equal(x, provider.GetDriver());
         }
 
-        [TestPriority(0)]
+        [TestPriority(10)]
         [Trait("Category", nameof(N4pper_Ext_Tests))]
         [Fact(DisplayName = nameof(CRUD_Node))]
         public void CRUD_Node()
@@ -124,7 +123,7 @@ namespace UnitTest
                 Assert.Null(val);
             }
         }
-        [TestPriority(0)]
+        [TestPriority(10)]
         [Trait("Category", nameof(N4pper_Ext_Tests))]
         [Fact(DisplayName = nameof(CRUD_Rel))]
         public void CRUD_Rel()
@@ -164,7 +163,7 @@ namespace UnitTest
             }
         }
 
-        [TestPriority(0)]
+        [TestPriority(20)]
         [Trait("Category", nameof(N4pper_Ext_Tests))]
         [Fact(DisplayName = nameof(CRUD_Multi))]
         public void CRUD_Multi()
@@ -173,20 +172,20 @@ namespace UnitTest
 
             using (ISession session = provider.GetDriver().Session())
             {
-                session.Execute(p=>$"CREATE {p.Node<Book>(p.Symbol(), new { Id=1})}");
-                session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { Id = 1 })}");
-                session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { Id = 2 })}");
+                session.Execute(p=>$"CREATE {p.Node<Book>(p.Symbol(), new { EntityId = 1})}");
+                session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { EntityId = 1 })}");
+                session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { EntityId = 2 })}");
 
                 Symbol b = new Symbol();
                 Symbol c = new Symbol();
-                session.Execute(p => $"MATCH {p.Node<Book>(b, new { Id = 1 }).BuildForQuery()}, {p.Node<Chapter>(c).BuildForQuery()} " +
+                session.Execute(p => $"MATCH {p.Node<Book>(b, new { EntityId = 1 }).BuildForQuery()}, {p.Node<Chapter>(c).BuildForQuery()} " +
                 $"CREATE {new Node(b)}-[:rel]->{new Node(c)}");
 
                 Book test = session.ExecuteQuery<Book, IEnumerable<Chapter>>(p=> $"MATCH {p.Node<Book>(b)}-[:rel]->{p.Node<Chapter>(c)} RETURN {b}, collect({c}) AS c",
                     (book, chapters) =>
                     {
                         book.Chapters = book.Chapters??new List<Chapter>();
-                        foreach (Chapter item in chapters.OrderBy(p=>p.Id))
+                        foreach (Chapter item in chapters.OrderBy(p=>p.EntityId))
                         {
                             book.Chapters.Add(item);
                         }
@@ -196,8 +195,8 @@ namespace UnitTest
                 Assert.NotNull(test);
 
                 Assert.Equal(2, test.Chapters.Count);
-                Assert.Equal(1, test.Chapters[0].Id);
-                Assert.Equal(2, test.Chapters[1].Id);
+                Assert.Equal(1, test.Chapters[0].EntityId);
+                Assert.Equal(2, test.Chapters[1].EntityId);
 
                 IResultSummary result = session.Execute(p => $"MATCH {p.Node<Book>(b)}-[:rel]->{p.Node<Chapter>(c)} DETACH DELETE {b}, {c}");
                 Assert.Equal(3, result.Counters.NodesDeleted);

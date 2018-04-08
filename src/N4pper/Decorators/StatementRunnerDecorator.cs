@@ -10,9 +10,11 @@ namespace N4pper.Decorators
     public class StatementRunnerDecorator : StatementRunnerDecoratorBase, IGraphManagedStatementRunner
     {
         public N4pperManager Manager { get; protected set; }
-        public StatementRunnerDecorator(IStatementRunner runner, N4pperManager manager) : base(runner)
+        public bool IsApocAvailable { get; protected set; }
+        public StatementRunnerDecorator(IStatementRunner runner, N4pperManager manager, IGraphManagedStatementRunner parent) : base(runner)
         {
             Manager = manager;
+            IsApocAvailable = parent.IsApocAvailable;
         }
         public override IStatementResult Run(Statement statement)
         {

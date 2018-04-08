@@ -9,9 +9,9 @@ namespace N4pper
 {
     public static class ISessionExtensions
     {
-        public static ISession WithGraphManager(this ISession ext, N4pperManager manager)
+        public static ISession WithGraphManager(this ISession ext, N4pperManager manager, IGraphManagedStatementRunner parent)
         {
-            return new SessionDecorator(ext, manager);
+            return new SessionDecorator(ext, manager, parent);
         }
     }
 }

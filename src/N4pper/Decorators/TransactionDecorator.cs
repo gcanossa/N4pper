@@ -10,10 +10,12 @@ namespace N4pper.Decorators
     public class TransactionDecorator : TransactionDecoratorBase, IGraphManagedStatementRunner
     {
         public N4pperManager Manager { get; protected set; }
+        public bool IsApocAvailable { get; protected set; }
 
-        public TransactionDecorator(ITransaction transaction, N4pperManager manager) : base(transaction)
+        public TransactionDecorator(ITransaction transaction, N4pperManager manager, IGraphManagedStatementRunner parent) : base(transaction)
         {
             Manager = manager;
+            IsApocAvailable = parent.IsApocAvailable;
         }
 
         public override IStatementResult Run(Statement statement)

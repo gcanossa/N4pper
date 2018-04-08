@@ -10,54 +10,56 @@ namespace N4pper.Decorators
     public class SessionDecorator : SessionDecoratorBase, IGraphManagedStatementRunner
     {
         public N4pperManager Manager { get; protected set; }
-        public SessionDecorator(ISession session, N4pperManager manager) : base(session)
+        public bool IsApocAvailable { get; protected set; }
+        public SessionDecorator(ISession session, N4pperManager manager, IGraphManagedStatementRunner parent) : base(session)
         {
             Manager = manager;
+            IsApocAvailable = parent.IsApocAvailable;
         }
 
         public override ITransaction BeginTransaction()
         {
-            return new TransactionDecorator(base.BeginTransaction(), Manager);
+            return new TransactionDecorator(base.BeginTransaction(), Manager, this);
         }
         public override ITransaction BeginTransaction(string bookmark)
         {
-            return new TransactionDecorator(base.BeginTransaction(bookmark), Manager);
+            return new TransactionDecorator(base.BeginTransaction(bookmark), Manager, this);
         }
         public override Task<ITransaction> BeginTransactionAsync()
         {
-            return Task.Run<ITransaction>(async () => new TransactionDecorator(await base.BeginTransactionAsync(), Manager));
+            return Task.Run<ITransaction>(async () => new TransactionDecorator(await base.BeginTransactionAsync(), Manager, this));
         }
         public override void ReadTransaction(Action<ITransaction> work)
         {
-            base.ReadTransaction(p => work(new TransactionDecorator(p, Manager)));
+            base.ReadTransaction(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override T ReadTransaction<T>(Func<ITransaction, T> work)
         {
-            return base.ReadTransaction(p => work(new TransactionDecorator(p, Manager)));
+            return base.ReadTransaction(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override Task ReadTransactionAsync(Func<ITransaction, Task> work)
         {
-            return base.ReadTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+            return base.ReadTransactionAsync(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override Task<T> ReadTransactionAsync<T>(Func<ITransaction, Task<T>> work)
         {
-            return base.ReadTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+            return base.ReadTransactionAsync(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override void WriteTransaction(Action<ITransaction> work)
         {
-            base.WriteTransaction(p => work(new TransactionDecorator(p, Manager)));
+            base.WriteTransaction(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override T WriteTransaction<T>(Func<ITransaction, T> work)
         {
-            return base.WriteTransaction(p => work(new TransactionDecorator(p, Manager)));
+            return base.WriteTransaction(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override Task WriteTransactionAsync(Func<ITransaction, Task> work)
         {
-            return base.WriteTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+            return base.WriteTransactionAsync(p => work(new TransactionDecorator(p, Manager, this)));
         }
         public override Task<T> WriteTransactionAsync<T>(Func<ITransaction, Task<T>> work)
         {
-            return base.WriteTransactionAsync(p => work(new TransactionDecorator(p, Manager)));
+            return base.WriteTransactionAsync(p => work(new TransactionDecorator(p, Manager, this)));
         }
 
 

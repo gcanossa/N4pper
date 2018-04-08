@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\N4pper.Orm\N4pper.Orm.csproj" />
+    <ProjectReference Include="..\..\src\N4pper.Ogm\N4pper.Ogm.csproj" />
     <ProjectReference Include="..\..\src\N4pper\N4pper.csproj" />
   </ItemGroup>
 

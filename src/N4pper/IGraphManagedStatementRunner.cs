@@ -7,5 +7,6 @@ namespace N4pper
     public interface IGraphManagedStatementRunner
     {
         N4pperManager Manager { get; }
+        bool IsApocAvailable { get; }
     }
 }

@@ -14,7 +14,7 @@ namespace N4pper.Queryable.CypherSintaxHelpers
         {
         }
 
-        public override string TokenizerRegexp => @"WITH\s+((?:(\*)|(?:[\w_\(\)]+\s+AS\s+([\w_\(\)]+))|([\w_\(\)]+))\s*,\s*)*((?:(\*)|(?:[\w_\(\)]+\s+AS\s+([\w_\(\)]+))|([\w_\(\)]+)))";
+        public override string TokenizerRegexp => @"WITH\s+((?:(\*)|(?:[\w_\(\)\*]+\s+AS\s+([\w_\(\)\*]+))|([\w_\(\)\*]+))\s*,\s*)*((?:(\*)|(?:[\w_\(\)\*]+\s+AS\s+([\w_\(\)\*]+))|([\w_\(\)\*]+)))";
 
         public override CypherStatementModifier Tokenize(string cypherStatement)
         {
@@ -33,7 +33,7 @@ namespace N4pper.Queryable.CypherSintaxHelpers
             string prevKey = null;
             foreach (string currKey in Tokens.Keys)
             {
-                foreach (Match m in Regex.Matches(Tokens[currKey].Value.Substring(4), @"(?:(\*)|(?:[\w_\(\)]+\s+AS\s+([\w_\(\)]+))|([\w_\(\)]+))", RegexOptions.IgnoreCase))
+                foreach (Match m in Regex.Matches(Tokens[currKey].Value.Substring(4), @"(?:(\*)|(?:[\w_\(\)\*]+\s+AS\s+([\w_\(\)\*]+))|([\w_\(\)\*]+))", RegexOptions.IgnoreCase))
                 {
                     if (!string.IsNullOrEmpty(m.Groups[1].Value))
                     {

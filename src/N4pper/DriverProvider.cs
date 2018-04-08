@@ -1,4 +1,5 @@
-﻿using Neo4j.Driver.V1;
+﻿using N4pper.Decorators;
+using Neo4j.Driver.V1;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -23,14 +24,19 @@ namespace N4pper
         public virtual IDriver GetDriver()
         {
             if (Instance == null)
-                Instance = GraphDatabase.Driver(Uri, AuthToken, Config);
-            try
             {
-                Instance.Session().Dispose();
+                Instance = new DriverDecorator(GraphDatabase.Driver(Uri, AuthToken, Config), Manager);
             }
-            catch
+            else
             {
-                Instance = GraphDatabase.Driver(Uri, AuthToken, Config);
+                try
+                {
+                    Instance.Session().Dispose();
+                }
+                catch
+                {
+                    Instance = new DriverDecorator(GraphDatabase.Driver(Uri, AuthToken, Config), Manager);
+                }
             }
 
             return Instance;

@@ -69,6 +69,14 @@ namespace UnitTest
 
             Assert.Equal("match (p:Parent {Name:\"Luca\", Age:2}-[r:Of {Id:1}]->(:Son {Name:\"Carlo\"}) " +
                 $"WITH p,collect(r) AS q WITH p,q", res);
+
+            query = "MATCH (_8f4a36df17da497d93d2ffde4677e0d4:`N4pper.Ogm.Entities.IOgmEntity`{Name:'a083e3e08ca5407eab11687974520036'}) " +
+                "WITH _8f4a36df17da497d93d2ffde4677e0d4  WITH * WITH count(*)";
+
+            res = obj.Tokenize(query).Rebuild();
+
+            Assert.StartsWith("MATCH (_8f4a36df17da497d93d2ffde4677e0d4:`N4pper.Ogm.Entities.IOgmEntity`{Name:'a083e3e08ca5407eab11687974520036'}) " +
+                "WITH _8f4a36df17da497d93d2ffde4677e0d4  WITH _8f4a36df17da497d93d2ffde4677e0d4 WITH count(*) AS _", res);
         }
         [Trait("Category", nameof(QueryableTests))]
         [Fact(DisplayName = nameof(PipeVariableRewriter_test2))]

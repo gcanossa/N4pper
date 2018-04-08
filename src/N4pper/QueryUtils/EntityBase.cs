@@ -73,10 +73,13 @@ namespace N4pper.QueryUtils
             {
                 return "{" + string.Join(",", Props
                     .Where(
-                    p => 
-                        Type==null ||
-                        ObjectExtensions.IsPrimitive(Type.GetProperty(p.Key)?.PropertyType ?? typeof(IList<object>)) && 
-                        (Type.GetProperty(p.Key)?.CanRead ?? false) && (Type.GetProperty(p.Key)?.CanWrite ?? false))
+                    p =>
+                        Type == null ||
+                        p.Value == null ||
+                        p.Value is Parameter ||
+                        p.Value is Symbol ||
+                        (ObjectExtensions.IsPrimitive(p.Value.GetType()) && (Type.GetProperty(p.Key)?.CanRead ?? true) && (Type.GetProperty(p.Key)?.CanWrite ?? true))
+                        )
                     .Select(p => $"{p.Key}:{HandleValue(p.Value)}")) + "}";
             }
         }

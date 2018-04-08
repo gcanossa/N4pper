@@ -17,7 +17,7 @@ namespace N4pper
                 if (param == null)
                     return result;
 
-                foreach (KeyValuePair<string, object> kv in param.Where(p => p.Value == null || ObjectExtensions.IsPrimitive(p.Value.GetType())))
+                foreach (KeyValuePair<string, object> kv in param)
                 {
                     if (kv.Value == null)
                         result.Add(kv.Key, kv.Value);

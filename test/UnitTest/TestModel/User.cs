@@ -1,11 +1,13 @@
-﻿using System;
+﻿using N4pper.Ogm.Entities;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace UnitTest.TestModel
 {
-    public class User
+    public class User : IOgmEntity
     {
+        public long? EntityId { get; set; }
         public string Id { get; set; }
         public string Name { get; set; }
         public DateTime Birthday { get; set; }

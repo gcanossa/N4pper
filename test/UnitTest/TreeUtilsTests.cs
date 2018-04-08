@@ -1,4 +1,4 @@
-﻿using N4pper.Orm.Queryable;
+﻿using N4pper.Ogm.Queryable;
 using System;
 using System.Collections.Generic;
 using System.Linq;

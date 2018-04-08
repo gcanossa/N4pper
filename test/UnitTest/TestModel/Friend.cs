@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using N4pper.Orm.Entities;
+using N4pper.Ogm.Entities;
 
 namespace UnitTest.TestModel
 {

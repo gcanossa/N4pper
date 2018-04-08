@@ -9,8 +9,8 @@ using N4pper;
 using N4pper.Diagnostic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using N4pper.Orm;
-using N4pper.Orm.Design;
+using N4pper.Ogm;
+using N4pper.Ogm.Design;
 
 namespace UnitTest
 {
@@ -22,13 +22,13 @@ namespace UnitTest
         protected override void ConfigureServices(ServiceCollection sc)
         {
             sc.AddSingleton<IConfigurationRoot>(Configuration);
-            sc.AddN4pperOGM()
+            sc.AddN4pperOgm()
                 .AddGraphContext<TestContext>(Configuration.GetConnectionString("DefaultConnection"));
-            sc.AddN4pperOGM()
+            sc.AddN4pperOgm()
                 .AddGraphContext<GlobalTestContext>(Configuration.GetConnectionString("DefaultConnection"));
 
             sc.AddN4pper();
-            sc.AddTransient<IQueryProfiler, QueryTraceLogger>();
+            sc.AddSingleton<IQueryProfiler, QueryTraceLogger>();
 
             sc.AddTransient<Neo4jServer_DriverBuilder>(provider => new Neo4jServer_DriverBuilder(Configuration));
             //sc.AddTransient<TestContext>();
@@ -72,19 +72,19 @@ namespace UnitTest
             {
                 base.OnModelCreating(builder);
 
-                builder.Entity<OrmCoreTests.PersonX>();
-                builder.Entity<OrmCoreTests.Student>(p => p.Id);
-                builder.Entity<OrmCoreTests.Teacher>();
-                builder.Entity<OrmCoreTests.Class>();
+                //builder.Entity<OrmCoreTests.PersonX>();
+                //builder.Entity<OrmCoreTests.Student>(p => p.Id);
+                //builder.Entity<OrmCoreTests.Teacher>();
+                //builder.Entity<OrmCoreTests.Class>();
 
-                builder.Entity<OrmCoreTests.Question>();
-                builder.Entity<OrmCoreTests.Suggestion>();
-                builder.Entity<OrmCoreTests.ContentPersonRel>();
+                //builder.Entity<OrmCoreTests.Question>();
+                //builder.Entity<OrmCoreTests.Suggestion>();
+                //builder.Entity<OrmCoreTests.ContentPersonRel>();
 
 
-                builder.Entity<UnitTest.Types.Person>();
-                builder.Entity<UnitTest.Types.Child>();
-                builder.Entity<UnitTest.Types.Parent>();
+                //builder.Entity<UnitTest.Types.Person>();
+                //builder.Entity<UnitTest.Types.Child>();
+                //builder.Entity<UnitTest.Types.Parent>();
             }
         }
 
