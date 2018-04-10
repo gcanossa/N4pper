@@ -6,8 +6,8 @@ namespace N4pper.Ogm.Entities
 {
     public abstract class ExplicitConnection : Connection
     {
-        public virtual object Source { get; set; }
-        public virtual object Destination { get; set; }
+        public virtual IOgmEntity Source { get; set; }
+        public virtual IOgmEntity Destination { get; set; }
     }
     public abstract class ExplicitConnection<S, D> : ExplicitConnection
         where S : class, IOgmEntity

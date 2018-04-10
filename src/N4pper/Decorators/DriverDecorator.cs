@@ -17,7 +17,7 @@ namespace N4pper.Decorators
             using (ISession session = base.Session().WithGraphManager(Manager, this))
             {
                 IStatementResult res = session.Run("CALL dbms.procedures() YIELD name WITH name WHERE name STARTS WITH 'apoc.' RETURN count(*)");
-                IsApocAvailable = ((long)res.ToList().First().Values.First().Value) > 0;
+                IsApocAvailable = res != null && ((long)res.ToList().First().Values.First().Value) > 0;
             }
         }
 

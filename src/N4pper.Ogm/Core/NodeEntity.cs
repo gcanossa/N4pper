@@ -7,14 +7,11 @@ using System.Text;
 
 namespace N4pper.Ogm.Core
 {
-    public class NodeEntity
+    public class NodeEntity : EntityPlaceholder
     {
-        protected IOgmEntity Entity { get; set; }
-        protected bool AllowNull { get; set; }
-        public NodeEntity(IOgmEntity entity, bool allowNull = true)
+        public NodeEntity(IOgmEntity entity, bool allowNull = true, IEnumerable<string> excludePorperties = null)
+            :base (entity, allowNull, excludePorperties)
         {
-            Entity = entity ?? throw new ArgumentNullException(nameof(entity));
-            AllowNull = allowNull;
         }
 
         public List<string> Labels
@@ -24,16 +21,6 @@ namespace N4pper.Ogm.Core
                 using (ManagerAccess.Manager.ScopeOMnG())
                 {
                     return TypeExtensions.GetLabels(Entity.GetType()).ToList();
-                }
-            }
-        }
-        public IDictionary<string, object> Properties
-        {
-            get
-            {
-                using (ManagerAccess.Manager.ScopeOMnG())
-                {
-                    return Entity.ToPropDictionary().Where(p => (AllowNull || p.Value != null) && (p.Value?.IsPrimitive() ?? true)).ToDictionary(p => p.Key, p => p.Value);
                 }
             }
         }

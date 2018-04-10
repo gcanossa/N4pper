@@ -10,26 +10,32 @@ namespace N4pper.Ogm.Design
 {
     internal class GenericBuilder<T> : IConstraintBuilder<T> where T : class, Entities.IOgmEntity
     {
-        private void ManageConnectionSource<D>(IEnumerable<string> from)
+        public TypesManager Manager { get; set; }
+        public GenericBuilder(TypesManager manager)
+        {
+            Manager = manager ?? throw new ArgumentNullException(nameof(manager));
+        }
+
+        protected void ManageConnectionSource<D>(IEnumerable<string> from)
         {
             PropertyInfo f = typeof(T).GetProperty(from.First());
 
-            if (!TypesManager.KnownTypeSourceRelations.ContainsKey(f))
+            if (!Manager.KnownTypeSourceRelations.ContainsKey(f))
             {
-                TypesManager.KnownTypeSourceRelations.Add(f, null);
+                Manager.KnownTypeSourceRelations.Add(f, null);
             }
         }
-        private void ManageConnectionDestination<D>(IEnumerable<string> from, IEnumerable<string> back)
+        protected void ManageConnectionDestination<D>(IEnumerable<string> from, IEnumerable<string> back)
         {
             PropertyInfo f = from != null ? typeof(T).GetProperty(from.First()) : null;
             PropertyInfo b = typeof(D).GetProperty(back.First());
 
-            if (!TypesManager.KnownTypeDestinationRelations.ContainsKey(b))
+            if (!Manager.KnownTypeDestinationRelations.ContainsKey(b))
             {
-                TypesManager.KnownTypeDestinationRelations.Add(b, f);
+                Manager.KnownTypeDestinationRelations.Add(b, f);
                 if(f!=null)
                 {
-                    TypesManager.KnownTypeSourceRelations[f] = b;
+                    Manager.KnownTypeSourceRelations[f] = b;
                 }
             }
         }
@@ -69,11 +75,8 @@ namespace N4pper.Ogm.Design
 
             foreach (string item in expr.ToPropertyNameCollection())
             {
-                //TODO: verifica
-                //if (TypesManager.KnownTypes[typeof(T)].Contains(item))
-                //    throw new InvalidOperationException("It's not possible to ignore a key property.");
-                if (!TypesManager.KnownTypesIngnoredProperties[typeof(T)].Contains(item))
-                    TypesManager.KnownTypesIngnoredProperties[typeof(T)].Add(item);
+                if (!Manager.KnownTypes[typeof(T)].IgnoredProperties.Contains(typeof(T).GetProperty(item)))
+                    Manager.KnownTypes[typeof(T)].IgnoredProperties.Add(typeof(T).GetProperty(item));
             }
 
             return this;

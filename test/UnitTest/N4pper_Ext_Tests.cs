@@ -80,7 +80,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(GetDriver))]
         public void GetDriver()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<TestContext>>();
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
 
             var x = provider.GetDriver();
             Assert.NotNull(x);
@@ -92,7 +92,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(CRUD_Node))]
         public void CRUD_Node()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<TestContext>>();
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -128,7 +128,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(CRUD_Rel))]
         public void CRUD_Rel()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<TestContext>>();
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -168,7 +168,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(CRUD_Multi))]
         public void CRUD_Multi()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<TestContext>>();
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
 
             using (ISession session = provider.GetDriver().Session())
             {

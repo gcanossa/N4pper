@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Text;
 using Neo4j.Driver.V1;
 using N4pper.Ogm.Core;
+using N4pper.Ogm.Design;
 
 namespace N4pper.Ogm
 {
@@ -71,6 +72,8 @@ namespace N4pper.Ogm
                     {
                         { p => (p as IGraphManagedStatementRunner)?.IsApocAvailable ?? false, new ApocEntityManager() }
                     }));
+            ext.AddSingleton<ChangeTrackerBase, DefaultChangeTracker>();
+            ext.AddSingleton<TypesManager, TypesManager>();
 
             return new GraphContextConfigurator(ext);
         }

@@ -6,7 +6,7 @@ namespace UnitTest.TestModel
 {
     public class Exercise :  EditableEntityBase, IContent
     {
-        public string Text { get; set; }
-        public double Value { get; set; }
+        public virtual string Text { get; set; }
+        public virtual double Value { get; set; }
     }
 }

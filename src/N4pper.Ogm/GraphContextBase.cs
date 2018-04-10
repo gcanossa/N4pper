@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Castle.DynamicProxy;
+using N4pper.Ogm.Core;
 using N4pper.Ogm.Design;
 using N4pper.Ogm.Entities;
 using N4pper.Ogm.Queryable;
@@ -15,198 +17,254 @@ namespace N4pper.Ogm
 {
     public class GraphContextBase : IGraphContext
     {
+        internal TypesManager TypesManager { get; set; }
+        internal ChangeTrackerBase ChangeTracker { get; set; }
+        internal EntityManagerBase EntityManager { get; set; }
+
+        internal ProxyGenerator ProxyGenerator { get; set; }
+
+        internal List<IInterceptor> Interceptors { get; set; }
+        
+        internal ObjectGraphWalker ObjectWalker { get; set; }
+
         #region IGraphContext impl
 
         public IStatementRunner Runner { get; protected set; }
-        public void Add(object obj)
+        public T Add<T>(T obj) where T : IOgmEntity
         {
-            if (!ManagedObjects.Contains(obj))
+            return (T)ObjectWalker.Visit(obj);
+        }
+        public void Remove(IOgmEntity obj)
+        {
+            if (obj is IProxyTargetAccessor)
+                obj = (IOgmEntity)((IProxyTargetAccessor)obj).DynProxyGetTarget();
+
+            if (obj is Connection)
+                ChangeTracker.Track(new EntityChangeRelDeletion(obj as Connection));
+            else
+                ChangeTracker.Track(new EntityChangeNodeDeletion(obj));
+        }
+        public T Attach<T>(T obj) where T : IOgmEntity
+        {
+            return (T)ObjectWalker.Visit(obj);
+        }
+        public T Detach<T>(T obj) where T : IOgmEntity
+        {
+            if (obj is IProxyTargetAccessor)
             {
-                ManagedObjects.Add(obj);
-                if (ManagedObjectsToBeRemoved.Contains(obj))
-                    ManagedObjectsToBeRemoved.Remove(obj);
-                object tmp = ManagedObjectsToBeRemoved.FirstOrDefault(p => TypesManager.AreEqual(p, obj));
-                if (tmp != null)
-                    ManagedObjectsToBeRemoved.Remove(tmp);
+                IOgmEntity result = (IOgmEntity)((IProxyTargetAccessor)obj).DynProxyGetTarget();
+
+                ChangeTracker.Untrack(result);
+
+                return (T)result;
             }
             else
-            {
-                object tmp = ManagedObjects.FirstOrDefault(p => TypesManager.AreEqual(p, obj));
-                if (tmp != null)
-                {
-                    TypesManager.CopyProps[tmp.GetType()].Invoke(null, new object[] { tmp, obj?.ToPropDictionary(), null });
-                }
-            }
-        }
-        public void Remove(object obj)
-        {
-            if (ManagedObjects.Contains(obj))
-                ManagedObjects.Remove(obj);
-            object tmp = ManagedObjects.FirstOrDefault(p => TypesManager.AreEqual(p, obj));
-            if (tmp != null)
-                ManagedObjects.Remove(tmp);
-            if (!ManagedObjectsToBeRemoved.Contains(obj) || !ManagedObjectsToBeRemoved.Any(p => TypesManager.AreEqual(p, obj)))
-                ManagedObjectsToBeRemoved.Add(obj);
-        }
-        public void Detach(object obj)
-        {
-            if (ManagedObjects.Contains(obj))
-                ManagedObjects.Remove(obj);
-            if (ManagedObjectsToBeRemoved.Contains(obj))
-                ManagedObjectsToBeRemoved.Remove(obj);
+                return obj;
         }
         public void SaveChanges()
         {
-            AddOrUpdate();
-            Delete();
+            try
+            {
+                IEnumerable<EntityChangeDescriptor> temp = ChangeTracker.GetChangeLog();
 
-            ManagedObjectsToBeRemoved.Clear();
+                List<Tuple<IOgmEntity, IEnumerable<string>>> creatingNodes = temp
+                    .Where(p => p is EntityChangeNodeCreation)
+                    .Select(p => new Tuple<IOgmEntity, IEnumerable<string>>(
+                        p.Entity,
+                        TypesManager.KnownTypes.ContainsKey(p.Entity.GetType()) ? TypesManager.KnownTypes[p.Entity.GetType()].IgnoredProperties.Select(q => q.Name) : null
+                    )).ToList();
+
+                List<IOgmEntity> deletingNodes = temp
+                    .Where(p => p is EntityChangeNodeDeletion)
+                    .Select(p => p.Entity).ToList();
+
+                List<Tuple<IOgmEntity, IEnumerable<string>>> updatingNodes = temp
+                    .Where(p => p is EntityChangeNodeUpdate)
+                    .GroupBy(p => p.Entity)
+                    .Select(p => new Tuple<IOgmEntity, IEnumerable<string>>(
+                        p.Key,
+                        p.Key.GetType().GetProperties().Select(q => q.Name).Except(p.Select(q => ((EntityChangeNodeUpdate)q).Property.Name))
+                        .Union(
+                        TypesManager.KnownTypes.ContainsKey(p.Key.GetType()) ? TypesManager.KnownTypes[p.Key.GetType()].IgnoredProperties.Select(q => q.Name) : new string[0]
+                        )
+                    )).ToList();
+
+                //TODO: fai relazioni
+
+                List<IOgmEntity> createdNodes = EntityManager.CreateNodes(Runner, creatingNodes)?.ToList();
+                EntityManager.UpdateNodes(Runner, updatingNodes);
+                EntityManager.DeleteNodes(Runner, deletingNodes);
+
+                for (int i = 0; i < (createdNodes?.Count??0); i++)
+                {
+                    creatingNodes[i].Item1.EntityId = createdNodes[i].EntityId;
+                }
+
+                //TODO: fai relazioni
+
+                ChangeTracker.Clear();
+            }
+            catch(Exception e)
+            {
+                throw e;
+            }
         }
         public IQueryable<T> Query<T>(Action<IInclude<T>> includes = null) where T : class, IOgmEntity
         {
-            if (typeof(ExplicitConnection).IsAssignableFrom(typeof(T)))
-                throw new InvalidOperationException("Quering explicit connections directly is not allowed.");
+            return null;
+            //TODO: ole ola
+            //if (typeof(ExplicitConnection).IsAssignableFrom(typeof(T)))
+            //    throw new InvalidOperationException("Quering explicit connections directly is not allowed.");
 
-            OgmQueryableNeo4jStatement<T> tmp = new OgmQueryableNeo4jStatement<T>(Runner, (r, t) => GraphContextQueryHelpers.Map(r, t, ManagedObjects));
+            //OgmQueryableNeo4jStatement<T> tmp = new OgmQueryableNeo4jStatement<T>(Runner, (r, t) => GraphContextQueryHelpers.Map(r, t, ManagedObjects));
 
-            includes?.Invoke(tmp);
+            //includes?.Invoke(tmp);
 
-            return tmp;
+            //return tmp;
         }
         #endregion
 
-        internal GraphContextBase()
+        internal GraphContextBase(TypesManager typesManager, ChangeTrackerBase changeTracker, EntityManagerBase entityManager)
         {
+            TypesManager = typesManager ?? throw new ArgumentNullException(nameof(typesManager));
+            ChangeTracker = changeTracker ?? throw new ArgumentNullException(nameof(changeTracker));
+            EntityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
 
+            ProxyGenerator = new ProxyGenerator();
+            Interceptors = new List<IInterceptor>();
+            Interceptors.Add(new OgmCoreProxyInterceptor(this));
+
+            ObjectWalker = new ObjectGraphWalker(ProxyGenerator, typesManager,changeTracker, Interceptors);
         }
-        public GraphContextBase(IStatementRunner runner)
+
+        public GraphContextBase(IStatementRunner runner, TypesManager typesManager, ChangeTrackerBase changeTracker, EntityManagerBase entityManager)
+            :this(typesManager, changeTracker,entityManager)
         {
             Runner = runner ?? throw new ArgumentNullException(nameof(runner));
         }
 
         #region internals
 
-        private List<object> ManagedObjects { get; } = new List<object>();
-        private List<object> ManagedObjectsToBeRemoved { get; } = new List<object>();
 
-        private static readonly MethodInfo _addRel = null;// typeof(OgmCore).GetMethods().First(p => p.Name == nameof(OgmCore.AddOrUpdateRel) && p.GetGenericArguments().Length == 3);
+        //private void AddOrUpdate()
+        //{
+        //    StoringGraph graph = StoringGraph.Prepare(ManagedObjects);
 
-        private Dictionary<string, MethodInfo> AddRel { get; } = new Dictionary<string, MethodInfo>();
+        //    foreach (object obj in graph.Index.ToList())
+        //    {
+        //        if (!typeof(ExplicitConnection).IsAssignableFrom(obj.GetType()))
+        //        {
+        //            MethodInfo m = TypesManager.AddNode[obj.GetType()];
+        //            MethodInfo c = TypesManager.CopyProps[obj.GetType()];
+        //            int i = graph.Index.IndexOf(obj);
+        //            //TODO: verifica
+        //            //graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { Runner, obj }).ToPropDictionary().SelectProperties(TypesManager.KnownTypes[obj.GetType()]), null });
+        //        }
+        //    }
 
-        private void AddOrUpdate()
-        {
-            StoringGraph graph = StoringGraph.Prepare(ManagedObjects);
+        //    foreach (StoringGraph.Path path in graph.Paths
+        //        .Where(p =>
+        //            !typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)) &&
+        //            !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType()))
+        //        .Distinct(new StoringGraph.PathComparer())
+        //        .ToList())
+        //    {
+        //        long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        //        int relOrder = path.Targets.Count();
+        //        string sourcePropName =
+        //                 TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+        //                     path.Property.Name :
+        //                     TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+        //                     TypesManager.KnownTypeDestinationRelations[path.Property]?.Name ?? "" :
+        //                     path.Property.Name;
+        //        string destinationPropName =
+        //                TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+        //                    path.Property.Name :
+        //                    TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+        //                    TypesManager.KnownTypeSourceRelations[path.Property]?.Name ?? "" :
+        //                    "";
+        //        foreach (object obj in path.Targets.Reverse())
+        //        {
+        //            string key = $"{path.Origin.GetType().FullName}:{obj.GetType().FullName}";
+        //            if (!AddRel.Any(p => p.Key == key))
+        //                AddRel.Add(key, _addRel.MakeGenericMethod(typeof(Entities.Connection), path.Origin.GetType(), obj.GetType()));
+        //            MethodInfo m = AddRel[key];
 
-            foreach (object obj in graph.Index.ToList())
-            {
-                if (!typeof(ExplicitConnection).IsAssignableFrom(obj.GetType()))
-                {
-                    MethodInfo m = TypesManager.AddNode[obj.GetType()];
-                    MethodInfo c = TypesManager.CopyProps[obj.GetType()];
-                    int i = graph.Index.IndexOf(obj);
-                    //TODO: verifica
-                    //graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { Runner, obj }).ToPropDictionary().SelectProperties(TypesManager.KnownTypes[obj.GetType()]), null });
-                }
-            }
+        //            m.Invoke(null, new object[] { Runner, new Entities.Connection() { SourcePropertyName = sourcePropName, DestinationPropertyName = destinationPropName, Order = relOrder--, Version = version }, path.Origin, obj });
+        //        }
+        //        Runner.Execute(p =>//TODO: verifica
+        //            //$"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(TypesManager.KnownTypes[ObjectExtensions.GetElementType(path.Property.ReflectedType)]))}" +
+        //            $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
+        //            $"() " +
+        //            $"WHERE r.Version<>$version DELETE r", new { version });
+        //    }
 
-            foreach (StoringGraph.Path path in graph.Paths
-                .Where(p =>
-                    !typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)) &&
-                    !typeof(ExplicitConnection).IsAssignableFrom(p.Origin.GetType()))
-                .Distinct(new StoringGraph.PathComparer())
-                .ToList())
-            {
-                long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                int relOrder = path.Targets.Count();
-                string sourcePropName =
-                         TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
-                             path.Property.Name :
-                             TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
-                             TypesManager.KnownTypeDestinationRelations[path.Property]?.Name ?? "" :
-                             path.Property.Name;
-                string destinationPropName =
-                        TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
-                            path.Property.Name :
-                            TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
-                            TypesManager.KnownTypeSourceRelations[path.Property]?.Name ?? "" :
-                            "";
-                foreach (object obj in path.Targets.Reverse())
-                {
-                    string key = $"{path.Origin.GetType().FullName}:{obj.GetType().FullName}";
-                    if (!AddRel.Any(p => p.Key == key))
-                        AddRel.Add(key, _addRel.MakeGenericMethod(typeof(Entities.Connection), path.Origin.GetType(), obj.GetType()));
-                    MethodInfo m = AddRel[key];
+        //    foreach (StoringGraph.Path path in graph.Paths
+        //        .Where(p => typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)))
+        //        .Distinct(new StoringGraph.PathComparer())
+        //        .ToList())
+        //    {
+        //        long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        //        int relOrder = path.Targets.Count();
+        //        string sourcePropName =
+        //                TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+        //                    path.Property.Name :
+        //                    TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+        //                    TypesManager.KnownTypeDestinationRelations[path.Property]?.Name :
+        //                    path.Property.Name;
+        //        string destinationPropName =
+        //                TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
+        //                    path.Property.Name :
+        //                    TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
+        //                    TypesManager.KnownTypeSourceRelations[path.Property]?.Name :
+        //                    null;
+        //        MethodInfo c = TypesManager.CopyProps[ObjectExtensions.GetElementType(path.Property.PropertyType)];
+        //        foreach (object obj in path.Targets.Reverse())
+        //        {
+        //            ExplicitConnection item = obj as ExplicitConnection;
 
-                    m.Invoke(null, new object[] { Runner, new Entities.Connection() { SourcePropertyName = sourcePropName, DestinationPropertyName = destinationPropName, Order = relOrder--, Version = version }, path.Origin, obj });
-                }
-                Runner.Execute(p =>//TODO: verifica
-                    //$"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(TypesManager.KnownTypes[ObjectExtensions.GetElementType(path.Property.ReflectedType)]))}" +
-                    $"-{p.Rel<Entities.Connection>(p.Symbol("r"), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
-                    $"() " +
-                    $"WHERE r.Version<>$version DELETE r", new { version });
-            }
+        //            string key = $"{item.Source.GetType().FullName}:{item.GetType().FullName}:{item.Destination.GetType().FullName}";
+        //            if (!AddRel.Any(p => p.Key == key))
+        //                AddRel.Add(key, _addRel.MakeGenericMethod(item.GetType(), item.Source.GetType(), item.Destination.GetType()));
+        //            MethodInfo m = AddRel[key];
 
-            foreach (StoringGraph.Path path in graph.Paths
-                .Where(p => typeof(ExplicitConnection).IsAssignableFrom(ObjectExtensions.GetElementType(p.Property.PropertyType)))
-                .Distinct(new StoringGraph.PathComparer())
-                .ToList())
-            {
-                long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                int relOrder = path.Targets.Count();
-                string sourcePropName =
-                        TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
-                            path.Property.Name :
-                            TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
-                            TypesManager.KnownTypeDestinationRelations[path.Property]?.Name :
-                            path.Property.Name;
-                string destinationPropName =
-                        TypesManager.KnownTypeDestinationRelations.ContainsKey(path.Property) ?
-                            path.Property.Name :
-                            TypesManager.KnownTypeSourceRelations.ContainsKey(path.Property) ?
-                            TypesManager.KnownTypeSourceRelations[path.Property]?.Name :
-                            null;
-                MethodInfo c = TypesManager.CopyProps[ObjectExtensions.GetElementType(path.Property.PropertyType)];
-                foreach (object obj in path.Targets.Reverse())
-                {
-                    ExplicitConnection item = obj as ExplicitConnection;
+        //            item.Version = version;
+        //            item.Order = relOrder--;
+        //            item.SourcePropertyName = sourcePropName;
 
-                    string key = $"{item.Source.GetType().FullName}:{item.GetType().FullName}:{item.Destination.GetType().FullName}";
-                    if (!AddRel.Any(p => p.Key == key))
-                        AddRel.Add(key, _addRel.MakeGenericMethod(item.GetType(), item.Source.GetType(), item.Destination.GetType()));
-                    MethodInfo m = AddRel[key];
-
-                    item.Version = version;
-                    item.Order = relOrder--;
-                    item.SourcePropertyName = sourcePropName;
-
-                    item.DestinationPropertyName = destinationPropName;
-                    int i = graph.Index.IndexOf(obj);
-                    //TODO: verifica
-                    //graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { Runner, item, item.Source, item.Destination }).SelectProperties(TypesManager.KnownTypes[ObjectExtensions.GetElementType(path.Property.PropertyType)]), null });
-                }
-                Runner.Execute(p =>//TODO: verifica
-                    //$"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(TypesManager.KnownTypes[ObjectExtensions.GetElementType(path.Property.ReflectedType)]))}" +
-                    $"-{new Rel(p.Symbol("r"), ObjectExtensions.GetElementType(path.Property.ReflectedType), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
-                    $"() " +
-                    $"WHERE r.Version<>$version DELETE r", new { version });
-            }
-        }
-        private void Delete()
-        {
-            foreach (object item in ManagedObjectsToBeRemoved)
-            {
-                TypesManager.DelNode[item.GetType()].Invoke(null, new object[] { Runner, item });
-            }
-            ManagedObjectsToBeRemoved.Clear();
-        }
+        //            item.DestinationPropertyName = destinationPropName;
+        //            int i = graph.Index.IndexOf(obj);
+        //            //TODO: verifica
+        //            //graph.Index[i] = c.Invoke(null, new object[] { obj, m.Invoke(null, new object[] { Runner, item, item.Source, item.Destination }).SelectProperties(TypesManager.KnownTypes[ObjectExtensions.GetElementType(path.Property.PropertyType)]), null });
+        //        }
+        //        Runner.Execute(p =>//TODO: verifica
+        //            //$"MATCH {new Node(p.Symbol(), path.Origin.GetType(), path.Origin.SelectProperties(TypesManager.KnownTypes[ObjectExtensions.GetElementType(path.Property.ReflectedType)]))}" +
+        //            $"-{new Rel(p.Symbol("r"), ObjectExtensions.GetElementType(path.Property.ReflectedType), new Dictionary<string, object>() { { nameof(ExplicitConnection.SourcePropertyName), sourcePropName }, { nameof(ExplicitConnection.DestinationPropertyName), destinationPropName } })}->" +
+        //            $"() " +
+        //            $"WHERE r.Version<>$version DELETE r", new { version });
+        //    }
+        //}
 
         #endregion
 
+        private bool _disposed = false;
         public void Dispose()
         {
-            ManagedObjects.Clear();
-            ManagedObjectsToBeRemoved.Clear();
-            Runner.Dispose();
+            if (!_disposed)
+            {
+                _disposed = true;
+
+                ChangeTracker.Clear();
+                ChangeTracker = null;
+                TypesManager = null;
+                EntityManager = null;
+                Interceptors.Clear();
+                Interceptors = null;
+                ObjectWalker = null;
+                ProxyGenerator = null;
+
+                Runner.Dispose();
+            }
         }
     }
 }

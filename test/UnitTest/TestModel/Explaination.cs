@@ -6,7 +6,7 @@ namespace UnitTest.TestModel
 {
     public class Explaination : EditableEntityBase, IContent
     {
-        public string Text { get; set; }
-        public double Relevance { get; set; }
+        public virtual string Text { get; set; }
+        public virtual double Relevance { get; set; }
     }
 }

@@ -6,9 +6,9 @@ namespace UnitTest.TestModel
 {
     public abstract class EditableEntityBase : IEditableEntity
     {
-        public long? EntityId { get; set; }
-        public int Index { get; set; }
-        public User Owner { get; set; }
-        public List<User> Contributors { get; set; }
+        public virtual long? EntityId { get; set; }
+        public virtual int Index { get; set; }
+        public virtual User Owner { get; set; }
+        public virtual List<User> Contributors { get; set; }
     }
 }

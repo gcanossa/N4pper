@@ -1,4 +1,5 @@
 ﻿using N4pper.Decorators;
+using N4pper.Ogm.Core;
 using N4pper.Ogm.Decorators;
 using N4pper.Ogm.Design;
 using N4pper.Ogm.Entities;
@@ -20,19 +21,19 @@ namespace N4pper.Ogm
     {
         public IDriver Driver { get; protected set; }
         
-        public GraphContext(DriverProvider provider)
-            :base()
+        public GraphContext(DriverProvider provider, TypesManager typesManager, ChangeTrackerBase changeTracker, EntityManagerBase entityManager)
+            :base(typesManager, changeTracker, entityManager)
         {
             Driver = new ManagedDriver(provider.GetDriver(), provider.Manager, this);
 
-            OnModelCreating(new GraphModelBuilder());
+            OnModelCreating(new GraphModelBuilder(typesManager));
 
             Runner = Driver.Session();
         }
         
         public TransactionGraphContext GetTransactionContext()
         {
-            return new TransactionGraphContext(((ISession)Runner).BeginTransaction());
+            return new TransactionGraphContext(((ISession)Runner).BeginTransaction(), TypesManager, ChangeTracker, EntityManager);
         }
 
         protected virtual void OnModelCreating(GraphModelBuilder builder)

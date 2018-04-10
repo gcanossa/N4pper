@@ -8,22 +8,23 @@ namespace N4pper.Ogm.Design
 {
     public sealed class GraphModelBuilder
     {
-        internal GraphModelBuilder()
+        public TypesManager Manager { get; set; }
+        public GraphModelBuilder(TypesManager manager)
         {
-
+            Manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
-        public IConstraintBuilder<T> Entity<T>() where T : class, Entities.IOgmEntity
+        public IConstraintBuilder<T> Entity<T>(bool ignoreUsupported = false) where T : class, Entities.IOgmEntity
         {
             if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(T)))
                 throw new ArgumentException($"To register an explicit connetion type use '{nameof(ConnectionEntity)}'.");
 
-            TypesManager.Entity<T>();
-            return new GenericBuilder<T>();
+            Manager.Entity<T>(ignoreUsupported);
+            return new GenericBuilder<T>(Manager);
         }
-        public IConstraintBuilder<T> ConnectionEntity<T>() where T : Entities.ExplicitConnection
+        public IConstraintBuilder<T> ConnectionEntity<T>(bool ignoreUsupported = false) where T : Entities.ExplicitConnection
         {
-            TypesManager.Entity<T>();
-            return new GenericBuilder<T>();
+            Manager.Entity<T>(ignoreUsupported);
+            return new GenericBuilder<T>(Manager);
         }
     }
 }

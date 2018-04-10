@@ -15,7 +15,7 @@ using UnitTest.TestModel;
 using Xunit;
 using static UnitTest.Neo4jFixture;
 
-namespace UnitTest.Types
+namespace UnitTest
 {
     [TestCaseOrderer(AsIKnow.XUnitExtensions.Constants.PriorityOrdererTypeName, AsIKnow.XUnitExtensions.Constants.PriorityOrdererTypeAssemblyName)]
     [Collection(nameof(Neo4jCollection))]
@@ -45,7 +45,7 @@ namespace UnitTest.Types
         [MemberData(nameof(GetEntityManagers))]
         public void CrUD_Nodes(EntityManagerBase mgr)
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<TestContext>>();
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -103,7 +103,7 @@ namespace UnitTest.Types
         [MemberData(nameof(GetEntityManagers))]
         public void CrUD_Rels(EntityManagerBase mgr)
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<TestContext>>();
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -155,6 +155,81 @@ namespace UnitTest.Types
                     session.ExecuteQuery<IOgmEntity>($"MATCH {new Node(s, type: typeof(IOgmEntity), props: new { Name = name }.ToPropDictionary()).BuildForQuery()} RETURN {s}")
                         .Count()
                     );
+            }
+        }
+
+        [TestPriority(10)]
+        [Trait("Category", nameof(N4pper_Ogm_Core_Tests))]
+        [Theory(DisplayName = nameof(Connections))]
+        [MemberData(nameof(GetEntityManagers))]
+        public void Connections(EntityManagerBase mgr)
+        {
+            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
+
+            using (ISession session = provider.GetDriver().Session())
+            {
+                Symbol s = new Symbol();
+                Symbol d = new Symbol();
+                Symbol r = new Symbol();
+
+                string name = Guid.NewGuid().ToString("N");
+
+                Book book = new Book() { Name = name };
+                Chapter chapter = new Chapter() { Name = name };
+
+                Assert.Equal(
+                    0,
+                    session.ExecuteQuery<IOgmEntity>($"MATCH {new Node(s, type: typeof(IOgmEntity), props: new { Name = name }.ToPropDictionary()).BuildForQuery()} RETURN {s}")
+                        .Count()
+                    );
+
+                List<IOgmEntity> res = mgr.CreateNodes(session, new IOgmEntity[] { book, chapter }).ToList();
+
+                Assert.Equal(
+                    2,
+                    session.ExecuteQuery<IOgmEntity>($"MATCH {new Node(s, type: typeof(IOgmEntity), props: new { Name = name }.ToPropDictionary()).BuildForQuery()} RETURN {s}")
+                        .Count()
+                    );
+
+                List<Connection> conns = mgr.MergeConnections(session, new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>[]
+                {
+                    new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>(
+                        (long)(res.First(p => p is Book) as Book).EntityId,
+                        new Tuple<Connection, IEnumerable<string>>(new Connection(){ SourcePropertyName="source", DestinationPropertyName="destination", Order=1 }, new string[]{ nameof(IOgmEntity.EntityId) }),
+                        (long)(res.First(p => p is Chapter) as Chapter).EntityId)
+                }).ToList();
+
+                Assert.Equal(1, conns.Count);
+
+                conns = mgr.MergeConnections(session, new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>[]
+                {
+                    new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>(
+                        (long)(res.First(p => p is Book) as Book).EntityId,
+                        new Tuple<Connection, IEnumerable<string>>(new Connection(){ SourcePropertyName="source", DestinationPropertyName="destination", Order=1 }, new string[]{ nameof(IOgmEntity.EntityId) }),
+                        (long)(res.First(p => p is Chapter) as Chapter).EntityId)
+                }).ToList();
+
+                Assert.Equal(1, conns.Count);
+
+                Assert.Equal(
+                    1,
+                    session.ExecuteQuery<IOgmEntity>($"MATCH " +
+                    $"{new Node(s, type: typeof(IOgmEntity), props: new { Name = name }.ToPropDictionary())._(new Rel(r))._V(new Node(d, type: typeof(IOgmEntity), props: new { Name = name }.ToPropDictionary())).BuildForQuery()}" +
+                    $" RETURN {r}")
+                        .Count()
+                    );
+
+                mgr.DeleteNodes(session, res);
+
+                conns = mgr.MergeConnections(session, new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>[]
+                {
+                    new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>(
+                        (long)(res.First(p => p is Book) as Book).EntityId,
+                        new Tuple<Connection, IEnumerable<string>>(new Connection(){ SourcePropertyName="source", DestinationPropertyName="destination", Order=1 }, new string[]{ nameof(IOgmEntity.EntityId) }),
+                        (long)(res.First(p => p is Chapter) as Chapter).EntityId)
+                }).ToList();
+
+                Assert.Equal(0, conns.Count);
             }
         }
     }

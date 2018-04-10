@@ -9,7 +9,7 @@ namespace UnitTest.TestModel
     {
         public User Who => Destination;
         public User Of => Source;
-        public DateTimeOffset MeetingDay { get; set; }
-        public double Score { get; set; }
+        public virtual DateTimeOffset MeetingDay { get; set; }
+        public virtual double Score { get; set; }
     }
 }

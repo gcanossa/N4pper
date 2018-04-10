@@ -7,14 +7,14 @@ namespace UnitTest.TestModel
 {
     public class User : IOgmEntity
     {
-        public long? EntityId { get; set; }
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public DateTime Birthday { get; set; }
-        public DateTime? Deathday { get; set; }
-        public TimeSpan Age { get { return (Deathday ?? DateTime.Now) - Birthday; } }
-        public List<Friend> Friends { get; set; } = new List<Friend>();
-        public Friend BestFriend { get; set; }
-        public List<IContent> OwnedContents { get; set; }
+        public virtual long? EntityId { get; set; }
+        public virtual string Id { get; set; }
+        public virtual string Name { get; set; }
+        public virtual DateTime Birthday { get; set; }
+        public virtual DateTime? Deathday { get; set; }
+        public virtual TimeSpan Age { get { return (Deathday ?? DateTime.Now) - Birthday; } }
+        public virtual List<Friend> Friends { get; set; } = new List<Friend>();
+        public virtual Friend BestFriend { get; set; }
+        public virtual List<IContent> OwnedContents { get; set; }
     }
 }

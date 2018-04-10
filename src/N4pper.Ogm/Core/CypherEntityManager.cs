@@ -12,21 +12,21 @@ namespace N4pper.Ogm.Core
 {
     public class CypherEntityManager : EntityManagerBase
     {
-        public override IEnumerable<IOgmEntity> CreateNodes(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override IEnumerable<IOgmEntity> CreateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null);
+            entities = entities.Where(p => p?.Item1 != null);
 
             if (entities.Count() == 0)
                 return null;
 
             IGraphManagedStatementRunner mgr = (runner as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(runner));
 
-            List<IGrouping<Type,Tuple<int, IOgmEntity>>> sets = entities
-                .Select((p, i) => new Tuple<int, IOgmEntity>(i, p))
-                .GroupBy(p=>p.Item2.GetType()).ToList();
+            List<IGrouping<Type,Tuple<int, Tuple<IOgmEntity, IEnumerable<string>>>>> sets = entities
+                .Select((p, i) => new Tuple<int, Tuple<IOgmEntity, IEnumerable<string>>>(i, p))
+                .GroupBy(p=>p.Item2.Item1.GetType()).ToList();
 
             List<Tuple<int, IOgmEntity>> results = new List<Tuple<int, IOgmEntity>>();
 
@@ -34,7 +34,7 @@ namespace N4pper.Ogm.Core
             {
                 foreach (var set in sets)
                 {
-                    List<Tuple<int, IOgmEntity>> items = set.ToList();
+                    List<Tuple<int, Tuple<IOgmEntity, IEnumerable<string>>>> items = set.ToList();
                     Symbol row = new Symbol();
                     Symbol m = new Symbol();
 
@@ -46,7 +46,7 @@ namespace N4pper.Ogm.Core
                     sb.Append($"RETURN {m}");
 
                     results.AddRange(runner
-                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = set.Select(p => new NodeEntity(p.Item2, false).ToPropDictionary()).ToList() })
+                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = set.Select(p => new NodeEntity(p.Item2.Item1, false, excludePorperties: p.Item2.Item2).ToPropDictionary()).ToList() })
                         .ToList()
                         .Select((p,i)=>new Tuple<int, IOgmEntity>(items[i].Item1, p)));
                 }
@@ -55,21 +55,21 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, IOgmEntity, long>> entities)
+        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.Item2 != null);
+            entities = entities.Where(p => p?.Item2?.Item1 != null);
 
             if (entities.Count() == 0)
                 return null;
 
             IGraphManagedStatementRunner mgr = (runner as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(runner));
 
-            List<IGrouping<Type, Tuple<int, Tuple<long, IOgmEntity, long>>>> sets = entities
-                .Select((p, i) => new Tuple<int, Tuple<long, IOgmEntity, long>>(i, p))
-                .GroupBy(p => p.Item2.Item2.GetType()).ToList();
+            List<IGrouping<Type, Tuple<int, Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>>> sets = entities
+                .Select((p, i) => new Tuple<int, Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>(i, p))
+                .GroupBy(p => p.Item2.Item2.Item1.GetType()).ToList();
 
             List<Tuple<int, IOgmEntity>> results = new List<Tuple<int, IOgmEntity>>();
 
@@ -77,7 +77,7 @@ namespace N4pper.Ogm.Core
             {
                 foreach (var set in sets)
                 {
-                    List<Tuple<int, Tuple<long, IOgmEntity, long>>> items = set.ToList();
+                    List<Tuple<int, Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>> items = set.ToList();
 
                     Symbol row = new Symbol();
                     Symbol m = new Symbol();
@@ -94,7 +94,7 @@ namespace N4pper.Ogm.Core
                     sb.Append($"RETURN {m}");
 
                     results.AddRange(runner
-                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item2, p.Item1, p.Item3, false).ToPropDictionary()).ToList() })
+                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item2.Item1, p.Item1, p.Item3, false, excludePorperties: p.Item2.Item2).ToPropDictionary()).ToList() })
                         .ToList()
                         .Select((p, i) => new Tuple<int, IOgmEntity>(items[i].Item1, p)));
                 }
@@ -108,7 +108,7 @@ namespace N4pper.Ogm.Core
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.EntityId != null);
+            entities = entities.Where(p => p?.EntityId != null);
 
             if (entities.Count() == 0)
                 return;
@@ -135,7 +135,7 @@ namespace N4pper.Ogm.Core
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.EntityId != null);
+            entities = entities.Where(p => p?.EntityId != null);
 
             if (entities.Count() == 0)
                 return;
@@ -157,12 +157,87 @@ namespace N4pper.Ogm.Core
             }
         }
 
+        public override IEnumerable<Connection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>> entities)
+        {
+            runner = runner ?? throw new ArgumentNullException(nameof(runner));
+            entities = entities ?? throw new ArgumentNullException(nameof(entities));
+
+            entities = entities.Where(p => p?.Item2?.Item1 != null);
+
+            if (entities.Count() == 0)
+                return null;
+
+            IGraphManagedStatementRunner mgr = (runner as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(runner));
+
+            using (ManagerAccess.Manager.ScopeOMnG())
+            {
+                long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
+                List<IGrouping<string, Tuple<int,ConnectionEntity>>> sets = entities
+                .Select((p, i) => new Tuple<int, ConnectionEntity>(i, new ConnectionEntity(p.Item2.Item1, p.Item1, p.Item3, version, excludePorperties: p.Item2.Item2)))
+                .GroupBy(p => p.Item2.Label).ToList();
+
+                Symbol row = new Symbol();
+                Symbol s = new Symbol();
+                Symbol d = new Symbol();
+                Symbol r = new Symbol();
+
+                List<Tuple<int, IOgmEntity>> results = new List<Tuple<int, IOgmEntity>>();
+
+                foreach (var set in sets)
+                {
+                    List<Tuple<int, ConnectionEntity>> items = set.ToList();
+
+                    StringBuilder sb = new StringBuilder();
+
+                    sb.Append($"UNWIND $batch AS {row} ");
+                    sb.Append($"MATCH ({s} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.SourceId)}}}) ");
+                    sb.Append($"MATCH ({d} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.DestinationId)}}}) ");
+                    sb.Append($"MERGE ({s})-");
+                    sb.Append($"[{r}:`{set.Key}` {{" +
+                        $"{nameof(Connection.SourcePropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.SourcePropertyName)}," +
+                        $"{nameof(Connection.DestinationPropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.DestinationPropertyName)}," +
+                        $"{nameof(Connection.Order)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.Order)}" +
+                        $"}}]");
+                    sb.Append($"->({d}) ");
+                    sb.Append($"ON CREATE SET {r}+={row}.{nameof(RelEntity.Properties)},{r}.{nameof(IOgmEntity.EntityId)}=id({r}) ");
+                    sb.Append($"ON MATCH SET {r}+={row}.{nameof(RelEntity.Properties)},{r}.{nameof(IOgmEntity.EntityId)}=id({r}) ");
+                    sb.Append($"RETURN {r}");
+
+                    object batch = new { batch = set.Select(p => p.Item2.ToPropDictionary()).ToList() };
+
+                    results.AddRange(runner
+                        .ExecuteQuery<IOgmEntity>(sb.ToString(), batch).ToList()
+                        .Select((p, i) => new Tuple<int, IOgmEntity>(items[i].Item1, p)));
+
+                    sb.Clear();
+
+                    sb.Append($"UNWIND $batch AS {row} ");
+                    sb.Append($"MATCH ({s} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.SourceId)}}}) ");
+                    sb.Append($"MATCH ({d} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.DestinationId)}}}) ");
+                    sb.Append($"MATCH ({s})-");
+                    sb.Append($"[{r}:`{set.Key}` {{" +
+                        $"{nameof(Connection.SourcePropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.SourcePropertyName)}," +
+                        $"{nameof(Connection.DestinationPropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.DestinationPropertyName)}," +
+                        $"{nameof(Connection.Order)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.Order)}" +
+                        $"}}]");
+                    sb.Append($"->({d}) ");
+                    sb.Append($"WHERE EXISTS({r}.{nameof(Connection.Version)}) AND {r}.{nameof(Connection.Version)}<>{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.Version)} ");
+                    sb.Append($"DELETE {r}");
+
+                    runner.Execute(sb.ToString(), batch);
+                }                
+
+                return results.OrderBy(p => p.Item1).Select(p => p.Item2 as Connection).ToList();
+            }
+        }
+
         public override IEnumerable<IOgmEntity> UpdateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.Item1.EntityId != null);
+            entities = entities.Where(p => p?.Item1?.EntityId != null);
 
             if (entities.Count() == 0)
                 return null;
@@ -177,11 +252,11 @@ namespace N4pper.Ogm.Core
                 StringBuilder sb = new StringBuilder();
 
                 sb.Append($"UNWIND $batch AS {row} ");
-                sb.Append($"MATCH ({m} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(NodeEntity.Properties)}.{nameof(IOgmEntity.EntityId)}}})");
+                sb.Append($"MATCH ({m} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(IOgmEntity.EntityId)}}})");
                 sb.Append($"SET {m}+={row}.{nameof(NodeEntity.Properties)} ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new NodeEntity(p.Item1).ToPropDictionary().ExludeProperties(p.Item2 ?? new string[0])).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new NodeEntity(p.Item1, excludePorperties: p.Item2).ToPropDictionary()).ToList() }).ToList();
             }
         }
 
@@ -190,7 +265,7 @@ namespace N4pper.Ogm.Core
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.Item1.EntityId != null);
+            entities = entities.Where(p => p?.Item1?.EntityId != null);
 
             if (entities.Count() == 0)
                 return null;
@@ -205,11 +280,11 @@ namespace N4pper.Ogm.Core
                 StringBuilder sb = new StringBuilder();
 
                 sb.Append($"UNWIND $batch AS {row} ");
-                sb.Append($"MATCH ()-[{m} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.Properties)}.{nameof(IOgmEntity.EntityId)}}}]->()");
+                sb.Append($"MATCH ()-[{m} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(IOgmEntity.EntityId)}}}]->()");
                 sb.Append($"SET {m}+={row}.{nameof(RelEntity.Properties)} ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item1, -1, -1).ToPropDictionary().ExludeProperties(p.Item2 ?? new string[0])).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item1, -1, -1, excludePorperties: p.Item2).ToPropDictionary()).ToList() }).ToList();
             }
         }
     }

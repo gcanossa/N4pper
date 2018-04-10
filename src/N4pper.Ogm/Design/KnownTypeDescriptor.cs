@@ -5,7 +5,7 @@ using System.Text;
 
 namespace N4pper.Ogm.Design
 {
-    internal class KnownTypeDescriptor
+    public class KnownTypeDescriptor
     {
         public List<PropertyInfo> IgnoredProperties { get; } = new List<PropertyInfo>();
     }

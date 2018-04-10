@@ -12,7 +12,7 @@ namespace N4pper.Ogm.Core
 {
     public class ApocEntityManager : CypherEntityManager
     {
-        public override IEnumerable<IOgmEntity> CreateNodes(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override IEnumerable<IOgmEntity> CreateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
@@ -36,11 +36,11 @@ namespace N4pper.Ogm.Core
                 sb.Append($"SET {m}.{nameof(IOgmEntity.EntityId)}=id({m}) ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new NodeEntity(p, false).ToPropDictionary()).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new NodeEntity(p.Item1, false, excludePorperties: p.Item2).ToPropDictionary()).ToList() }).ToList();
             }
         }
 
-        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long,IOgmEntity, long>> entities)
+        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
@@ -68,7 +68,7 @@ namespace N4pper.Ogm.Core
                 sb.Append($"SET {m}.{nameof(IOgmEntity.EntityId)}=id({m}) ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item2, p.Item1, p.Item3, false).ToPropDictionary()).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item2.Item1, p.Item1, p.Item3, false, excludePorperties: p.Item2.Item2).ToPropDictionary()).ToList() }).ToList();
             }
         }
     }

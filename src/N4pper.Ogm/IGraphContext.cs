@@ -1,4 +1,5 @@
-﻿using N4pper.Ogm.Queryable;
+﻿using N4pper.Ogm.Entities;
+using N4pper.Ogm.Queryable;
 using Neo4j.Driver.V1;
 using System;
 using System.Collections.Generic;
@@ -10,10 +11,11 @@ namespace N4pper.Ogm
     public interface IGraphContext : IDisposable
     {
         IStatementRunner Runner { get; }
-        void Add(object obj);
-        void Remove(object obj);
-        void Detach(object obj);
+        T Add<T>(T obj) where T : IOgmEntity;
+        void Remove(IOgmEntity obj);
+        T Attach<T>(T obj) where T : IOgmEntity;
+        T Detach<T>(T obj) where T : IOgmEntity;
         void SaveChanges();
-        IQueryable<T> Query<T>(Action<IInclude<T>> includes = null) where T : class, Entities.IOgmEntity;
+        IQueryable<T> Query<T>(Action<IInclude<T>> includes = null) where T : class, IOgmEntity;
     }
 }

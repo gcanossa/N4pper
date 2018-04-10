@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using N4pper.Ogm;
 using N4pper.Ogm.Design;
+using N4pper.Ogm.Core;
 
 namespace UnitTest
 {
@@ -22,8 +23,6 @@ namespace UnitTest
         protected override void ConfigureServices(ServiceCollection sc)
         {
             sc.AddSingleton<IConfigurationRoot>(Configuration);
-            sc.AddN4pperOgm()
-                .AddGraphContext<TestContext>(Configuration.GetConnectionString("DefaultConnection"));
             sc.AddN4pperOgm()
                 .AddGraphContext<GlobalTestContext>(Configuration.GetConnectionString("DefaultConnection"));
 
@@ -40,7 +39,8 @@ namespace UnitTest
 
         public class GlobalTestContext : GraphContext
         {
-            public GlobalTestContext(DriverProvider<TestContext> provider) : base(provider)
+            public GlobalTestContext(DriverProvider<GlobalTestContext> provider, TypesManager typesManager, ChangeTrackerBase changeTracker, EntityManagerBase entityManager) 
+                : base(provider, typesManager, changeTracker, entityManager)
             {
             }
             protected override void OnModelCreating(GraphModelBuilder builder)
@@ -51,7 +51,7 @@ namespace UnitTest
                     .ConnectedMany(p => p.Chapters).Connected(p=>p.Book);
                 builder.Entity<TestModel.Chapter>();
                 builder.Entity<TestModel.Section>();
-                builder.ConnectionEntity<TestModel.Friend>();
+                builder.ConnectionEntity<TestModel.Friend>(true);
                 builder.Entity<TestModel.User>()
                     .ConnectedManyWith<TestModel.Friend, TestModel.User>(p => p.Friends).ConnectedMany(p => p.Friends);
                 builder.Entity<TestModel.User>()
@@ -63,30 +63,6 @@ namespace UnitTest
             }
         }
 
-        public class TestContext : GraphContext
-        {
-            public TestContext(DriverProvider<TestContext> provider) : base(provider)
-            {
-            }
-            protected override void OnModelCreating(GraphModelBuilder builder)
-            {
-                base.OnModelCreating(builder);
-
-                //builder.Entity<OrmCoreTests.PersonX>();
-                //builder.Entity<OrmCoreTests.Student>(p => p.Id);
-                //builder.Entity<OrmCoreTests.Teacher>();
-                //builder.Entity<OrmCoreTests.Class>();
-
-                //builder.Entity<OrmCoreTests.Question>();
-                //builder.Entity<OrmCoreTests.Suggestion>();
-                //builder.Entity<OrmCoreTests.ContentPersonRel>();
-
-
-                //builder.Entity<UnitTest.Types.Person>();
-                //builder.Entity<UnitTest.Types.Child>();
-                //builder.Entity<UnitTest.Types.Parent>();
-            }
-        }
 
         //public class Neo4jServer_DriverProvider : DriverProvider<TestContext>
         //{

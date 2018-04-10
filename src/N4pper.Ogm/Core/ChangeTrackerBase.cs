@@ -1,6 +1,7 @@
 ﻿using N4pper.Ogm.Entities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace N4pper.Ogm.Core
@@ -14,6 +15,16 @@ namespace N4pper.Ogm.Core
             return ChangeLog;
         }
 
+        public void Clear()
+        {
+            ChangeLog.Clear();
+        }
+
+        public void Untrack(IOgmEntity entity)
+        {
+            ChangeLog.RemoveAll(p => p.Entity == entity);
+            ChangeLog.RemoveAll(p => p is EntityChangeRelCreation && (((EntityChangeRelCreation)p).Source == entity || ((EntityChangeRelCreation)p).Destination == entity));
+        }
         public void Track(EntityChangeDescriptor item)
         {
             item = item ?? throw new ArgumentNullException(nameof(item));

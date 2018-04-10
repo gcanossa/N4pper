@@ -6,7 +6,7 @@ namespace UnitTest.TestModel
 {
     public class Book : EditableEntityBase
     {
-        public string Name { get; set; }
-        public List<Chapter> Chapters { get; set; }
+        public virtual string Name { get; set; }
+        public virtual List<Chapter> Chapters { get; set; }
     }
 }
