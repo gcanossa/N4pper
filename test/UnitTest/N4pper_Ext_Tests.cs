@@ -172,35 +172,38 @@ namespace UnitTest
 
             using (ISession session = provider.GetDriver().Session())
             {
-                session.Execute(p=>$"CREATE {p.Node<Book>(p.Symbol(), new { EntityId = 1})}");
-                session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { EntityId = 1 })}");
-                session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { EntityId = 2 })}");
+                for (int i = 0; i < 10; i++)
+                {
+                    session.Execute(p => $"CREATE {p.Node<Book>(p.Symbol(), new { EntityId = 1 })}");
+                    session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { EntityId = 1 })}");
+                    session.Execute(p => $"CREATE {p.Node<Chapter>(p.Symbol(), new { EntityId = 2 })}");
 
-                Symbol b = new Symbol();
-                Symbol c = new Symbol();
-                session.Execute(p => $"MATCH {p.Node<Book>(b, new { EntityId = 1 }).BuildForQuery()}, {p.Node<Chapter>(c).BuildForQuery()} " +
-                $"CREATE {new Node(b)}-[:rel]->{new Node(c)}");
+                    Symbol b = new Symbol();
+                    Symbol c = new Symbol();
+                    session.Execute(p => $"MATCH {p.Node<Book>(b, new { EntityId = 1 }).BuildForQuery()}, {p.Node<Chapter>(c).BuildForQuery()} " +
+                    $"CREATE {new Node(b)}-[:rel]->{new Node(c)}");
 
-                Book test = session.ExecuteQuery<Book, IEnumerable<Chapter>>(p=> $"MATCH {p.Node<Book>(b)}-[:rel]->{p.Node<Chapter>(c)} RETURN {b}, collect({c}) AS c",
-                    (book, chapters) =>
-                    {
-                        book.Chapters = book.Chapters??new List<Chapter>();
-                        foreach (Chapter item in chapters.OrderBy(p=>p.EntityId))
+                    Book test = session.ExecuteQuery<Book, IEnumerable<Chapter>>(p => $"MATCH {p.Node<Book>(b)}-[:rel]->{p.Node<Chapter>(c)} RETURN {b}, collect({c}) AS c",
+                        (book, chapters) =>
                         {
-                            book.Chapters.Add(item);
-                        }
-                        return book;
-                    }).FirstOrDefault();
+                            book.Chapters = book.Chapters ?? new List<Chapter>();
+                            foreach (Chapter item in chapters.OrderBy(p => p.EntityId))
+                            {
+                                book.Chapters.Add(item);
+                            }
+                            return book;
+                        }).FirstOrDefault();
 
-                Assert.NotNull(test);
+                    Assert.NotNull(test);
 
-                Assert.Equal(2, test.Chapters.Count);
-                Assert.Equal(1, test.Chapters[0].EntityId);
-                Assert.Equal(2, test.Chapters[1].EntityId);
+                    Assert.Equal(2, test.Chapters.Count);
+                    Assert.Equal(1, test.Chapters[0].EntityId);
+                    Assert.Equal(2, test.Chapters[1].EntityId);
 
-                IResultSummary result = session.Execute(p => $"MATCH {p.Node<Book>(b)}-[:rel]->{p.Node<Chapter>(c)} DETACH DELETE {b}, {c}");
-                Assert.Equal(3, result.Counters.NodesDeleted);
-                Assert.Equal(2, result.Counters.RelationshipsDeleted);
+                    IResultSummary result = session.Execute(p => $"MATCH {p.Node<Book>(b)}-[:rel]->{p.Node<Chapter>(c)} DETACH DELETE {b}, {c}");
+                    Assert.Equal(3, result.Counters.NodesDeleted);
+                    Assert.Equal(2, result.Counters.RelationshipsDeleted);
+                }
             }
         }
     }

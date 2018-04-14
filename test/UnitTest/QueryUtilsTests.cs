@@ -13,9 +13,14 @@ namespace UnitTest
     {
         #region nested types
 
-        public class TestDateTime
+        public abstract class Valued<T>
         {
-            public int Value { get; set; }
+            public virtual T Value { get; set; }
+        }
+
+        public class TestDateTime : Valued<int>
+        {
+            public override int Value { get; set; }
             public string ValueString { get; set; }
             public DateTime ValueDate { get; set; }
             public DateTimeOffset ValueDateOff { get; set; }
@@ -113,6 +118,9 @@ namespace UnitTest
 
             n1.Parametrize(p);
             Assert.Equal($"(p:`UnitTest.Types.Child`:`UnitTest.Types.IUniqueId`:`UnitTest.Types.IMortal`:`UnitTest.Types.Person`{{Id:$Id,Name:$Name,Birthday:{((DateTimeOffset)now).ToUnixTimeMilliseconds()},Deathday:$Deathday}})", n1);
+
+            Node x = new Node(type: typeof(TestDateTime));
+            string y = x.ToString();
         }
     }
 }
