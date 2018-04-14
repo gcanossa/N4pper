@@ -37,7 +37,7 @@ namespace N4pper.Ogm.Core
 
             foreach (EntityChangeRelCreation rel in ChangeLog.Where(p => p is EntityChangeRelCreation && (((EntityChangeRelCreation)p).Source == item.Entity || ((EntityChangeRelCreation)p).Destination == item.Entity)).ToList())
             {
-                RelDeletionChange(new EntityChangeRelDeletion(rel.Entity as Connection));
+                RelDeletionChange(new EntityChangeRelDeletion(rel.Entity as IOgmConnection));
             }
         }
 
@@ -90,9 +90,9 @@ namespace N4pper.Ogm.Core
             IEnumerable<EntityChangeDescriptor> temp = ChangeLog.Where(p => p.Entity == item.Entity).ToList();
 
             if (!temp.Any() && item.Entity.EntityId == null)
-                throw new InvalidOperationException("Unable to locate entity. It must be tracked or have an EntityId.");
+                return;
 
-            if (temp.Any(p => p is EntityChangeRelCreation))
+            if (temp.Any(p => p is EntityChangeRelCreation || p is EntityChangeConnectionMerge))
             {
                 ChangeLog.RemoveAll(p => temp.Contains(p));
             }
@@ -113,7 +113,7 @@ namespace N4pper.Ogm.Core
             if (temp.Any(p => p is EntityChangeRelDeletion))
                 throw new InvalidOperationException("Unable to update an entity scheduled for deletion");
 
-            if (temp.Any(p => p is EntityChangeRelCreation))
+            if (temp.Any(p => p is EntityChangeRelCreation || p is EntityChangeConnectionMerge))
                 return;
 
             if (temp.Any(p => p.Inverse != null && p.Inverse.Equals(item)))
@@ -126,6 +126,21 @@ namespace N4pper.Ogm.Core
                 }
                 ChangeLog.Add(item);
             }
+        }
+
+        protected override void ConnectionMergeChange(EntityChangeConnectionMerge item)
+        {
+            IEnumerable<EntityChangeDescriptor> temp = ChangeLog.Where(p => p.Entity == item.Entity && p is EntityChangeConnectionMerge).ToList();
+
+            ChangeLog.RemoveAll(p => 
+                temp.Contains(p) && 
+                ((p as EntityChangeConnectionMerge).Source != item.Source || (p as EntityChangeConnectionMerge).Destination != item.Destination));
+
+            EntityChangeConnectionMerge existing = temp.FirstOrDefault(p => (p as EntityChangeConnectionMerge).Source == item.Source && (p as EntityChangeConnectionMerge).Destination == item.Destination) as EntityChangeConnectionMerge;
+            if (existing == null)
+                ChangeLog.Add(item);
+            else
+                existing.Order = item.Order;
         }
     }
 }

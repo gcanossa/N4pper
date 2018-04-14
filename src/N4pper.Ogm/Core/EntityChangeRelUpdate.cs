@@ -8,7 +8,7 @@ namespace N4pper.Ogm.Core
 {
     public class EntityChangeRelUpdate : EntityChangeUpdate
     {
-        public EntityChangeRelUpdate(Connection entity, PropertyInfo property, object oldValue, object currentValue) : base(entity, property, oldValue, currentValue)
+        public EntityChangeRelUpdate(IOgmConnection entity, PropertyInfo property, object oldValue, object currentValue) : base(entity, property, oldValue, currentValue)
         {
         }
 
@@ -18,7 +18,7 @@ namespace N4pper.Ogm.Core
             get
             {
                 if (_inverse == null)
-                    _inverse = new EntityChangeRelUpdate(Entity as Connection, Property, CurrentValue, OldValue);
+                    _inverse = new EntityChangeRelUpdate(Entity as IOgmConnection, Property, CurrentValue, OldValue);
                 return _inverse;
             }
         }

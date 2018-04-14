@@ -13,7 +13,7 @@ namespace N4pper.Ogm.Core
         public long DestinationId { get; set; }
 
         protected long Version { get; set; }
-        public ConnectionEntity(Connection entity, long sourceId, long destinationId, long version, bool allowNull = true, IEnumerable<string> excludePorperties = null)
+        public ConnectionEntity(IOgmConnection entity, long sourceId, long destinationId, long version, bool allowNull = true, IEnumerable<string> excludePorperties = null)
             : base(entity, allowNull, excludePorperties)
         {
             SourceId = sourceId;
@@ -39,10 +39,10 @@ namespace N4pper.Ogm.Core
                 using (ManagerAccess.Manager.ScopeOMnG())
                 {
                     IDictionary<string, object> tmp = base.Properties;
-                    if (!tmp.ContainsKey(nameof(Connection.Version)))
-                        tmp.Add(nameof(Connection.Version), Version);
+                    if (!tmp.ContainsKey(nameof(OgmConnection.Version)))
+                        tmp.Add(nameof(OgmConnection.Version), Version);
                     else
-                        tmp[nameof(Connection.Version)] = Version;
+                        tmp[nameof(OgmConnection.Version)] = Version;
 
                     return tmp;
                 }

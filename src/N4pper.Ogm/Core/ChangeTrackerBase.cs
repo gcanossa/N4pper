@@ -41,6 +41,8 @@ namespace N4pper.Ogm.Core
                 RelDeletionChange(item as EntityChangeRelDeletion);
             else if (item is EntityChangeRelUpdate)
                 RelUpdateChange(item as EntityChangeRelUpdate);
+            else if (item is EntityChangeConnectionMerge)
+                ConnectionMergeChange(item as EntityChangeConnectionMerge);
             else
                 throw new ArgumentException($"Invalid EntityChangeDescriptor type. {item.GetType().FullName}", nameof(item));
         }
@@ -51,5 +53,6 @@ namespace N4pper.Ogm.Core
         protected abstract void RelCreationChange(EntityChangeRelCreation item);
         protected abstract void RelDeletionChange(EntityChangeRelDeletion item);
         protected abstract void RelUpdateChange(EntityChangeRelUpdate item);
+        protected abstract void ConnectionMergeChange(EntityChangeConnectionMerge item);
     }
 }

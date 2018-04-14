@@ -20,18 +20,18 @@ namespace N4pper.Ogm.Core
         }
         public abstract IEnumerable<IOgmEntity> UpdateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities);
         public abstract void DeleteNodes(IStatementRunner runner, IEnumerable<IOgmEntity> entities);
-        public IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, IOgmEntity, long>> entities)
+        public IEnumerable<IOgmConnection> CreateRels(IStatementRunner runner, IEnumerable<IOgmConnection> entities)
         {
-            return CreateRels(runner, entities.Select(p => new Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>(p.Item1, new Tuple<IOgmEntity, IEnumerable<string>>(p.Item2, new string[0]), p.Item3)));
+            return CreateRels(runner, entities.Select(p => new Tuple<IOgmConnection, IEnumerable<string>>(p, new string[0])));
         }
-        public abstract IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities);
-        public IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public abstract IEnumerable<IOgmConnection> CreateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities);
+        public IEnumerable<IOgmConnection> UpdateRels(IStatementRunner runner, IEnumerable<IOgmConnection> entities)
         {
-            return UpdateRels(runner, entities.Select(p => new Tuple<IOgmEntity, IEnumerable<string>>(p, new string[0])));
+            return UpdateRels(runner, entities.Select(p => new Tuple<IOgmConnection, IEnumerable<string>>(p, new string[0])));
         }
-        public abstract IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities);
-        public abstract void DeleteRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities);
+        public abstract IEnumerable<IOgmConnection> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities);
+        public abstract void DeleteRels(IStatementRunner runner, IEnumerable<IOgmConnection> entities);
 
-        public abstract IEnumerable<Connection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>> entities);
+        public abstract IEnumerable<IOgmConnection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities);
     }
 }

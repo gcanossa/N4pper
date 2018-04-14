@@ -10,7 +10,7 @@ namespace N4pper.Ogm.Core
     {
         public EntityChangeNodeCreation(IOgmEntity entity) : base(entity)
         {
-            if (entity is Connection)
+            if (entity is IOgmConnection)
                 throw new ArgumentException("A Connection cannot be used as node.", nameof(entity));
         }
 

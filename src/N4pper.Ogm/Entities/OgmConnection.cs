@@ -4,8 +4,10 @@ using System.Text;
 
 namespace N4pper.Ogm.Entities
 {
-    public class Connection : IOgmEntity
+    internal class OgmConnection : IOgmConnection
     {
+        public virtual IOgmEntity Source { get; set; }
+        public virtual IOgmEntity Destination { get; set; }
         public virtual string SourcePropertyName { get; set; }
         public virtual string DestinationPropertyName { get; set; }
         public virtual int Order { get; set; }

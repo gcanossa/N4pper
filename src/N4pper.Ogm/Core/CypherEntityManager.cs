@@ -24,9 +24,9 @@ namespace N4pper.Ogm.Core
 
             IGraphManagedStatementRunner mgr = (runner as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(runner));
 
-            List<IGrouping<Type,Tuple<int, Tuple<IOgmEntity, IEnumerable<string>>>>> sets = entities
-                .Select((p, i) => new Tuple<int, Tuple<IOgmEntity, IEnumerable<string>>>(i, p))
-                .GroupBy(p=>p.Item2.Item1.GetType()).ToList();
+            List<IGrouping<Type,Tuple<int, Type, NodeEntity>>> sets = entities
+                .Select((p, i) => new Tuple<int, Type, NodeEntity>(i, p.Item1.GetType(), new NodeEntity(p.Item1, false, p.Item2)))
+                .GroupBy(p=>p.Item2).ToList();
 
             List<Tuple<int, IOgmEntity>> results = new List<Tuple<int, IOgmEntity>>();
 
@@ -34,7 +34,7 @@ namespace N4pper.Ogm.Core
             {
                 foreach (var set in sets)
                 {
-                    List<Tuple<int, Tuple<IOgmEntity, IEnumerable<string>>>> items = set.ToList();
+                    List<Tuple<int, Type, NodeEntity>> items = set.ToList();
                     Symbol row = new Symbol();
                     Symbol m = new Symbol();
 
@@ -46,7 +46,7 @@ namespace N4pper.Ogm.Core
                     sb.Append($"RETURN {m}");
 
                     results.AddRange(runner
-                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = set.Select(p => new NodeEntity(p.Item2.Item1, false, excludePorperties: p.Item2.Item2).ToPropDictionary()).ToList() })
+                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = set.Select(p => p.Item3.ToPropDictionary()).ToList() })
                         .ToList()
                         .Select((p,i)=>new Tuple<int, IOgmEntity>(items[i].Item1, p)));
                 }
@@ -55,21 +55,25 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities)
+        public override IEnumerable<IOgmConnection> CreateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p?.Item2?.Item1 != null);
+            entities = entities.Where(p => p?.Item1 != null);
 
             if (entities.Count() == 0)
                 return null;
 
             IGraphManagedStatementRunner mgr = (runner as IGraphManagedStatementRunner) ?? throw new ArgumentException("The statement must be decorated.", nameof(runner));
 
-            List<IGrouping<Type, Tuple<int, Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>>> sets = entities
-                .Select((p, i) => new Tuple<int, Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>(i, p))
-                .GroupBy(p => p.Item2.Item2.Item1.GetType()).ToList();
+            List<IGrouping<Type, Tuple<int, Type, RelEntity>>> sets = entities
+                .Select((p, i) => 
+                new Tuple<int, Type, RelEntity>(
+                    i, 
+                    p.Item1.GetType(),
+                    new RelEntity(p.Item1, p.Item1.Source.EntityId.Value, p.Item1.Destination.EntityId.Value, false, p.Item2)))
+                .GroupBy(p => p.Item2).ToList();
 
             List<Tuple<int, IOgmEntity>> results = new List<Tuple<int, IOgmEntity>>();
 
@@ -77,7 +81,7 @@ namespace N4pper.Ogm.Core
             {
                 foreach (var set in sets)
                 {
-                    List<Tuple<int, Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>> items = set.ToList();
+                    List<Tuple<int, Type, RelEntity>> items = set.ToList();
 
                     Symbol row = new Symbol();
                     Symbol m = new Symbol();
@@ -94,12 +98,12 @@ namespace N4pper.Ogm.Core
                     sb.Append($"RETURN {m}");
 
                     results.AddRange(runner
-                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item2.Item1, p.Item1, p.Item3, false, excludePorperties: p.Item2.Item2).ToPropDictionary()).ToList() })
+                        .ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = items.Select(p => p.Item3.ToPropDictionary()).ToList() })
                         .ToList()
                         .Select((p, i) => new Tuple<int, IOgmEntity>(items[i].Item1, p)));
                 }
 
-                return results.OrderBy(p => p.Item1).Select(p => p.Item2).ToList();
+                return results.OrderBy(p => p.Item1).Select(p => p.Item2 as IOgmConnection).ToList();
             }
         }
 
@@ -130,7 +134,7 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override void DeleteRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override void DeleteRels(IStatementRunner runner, IEnumerable<IOgmConnection> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
@@ -157,12 +161,12 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override IEnumerable<Connection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>> entities)
+        public override IEnumerable<IOgmConnection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p?.Item2?.Item1 != null);
+            entities = entities.Where(p => p?.Item1 != null);
 
             if (entities.Count() == 0)
                 return null;
@@ -174,7 +178,7 @@ namespace N4pper.Ogm.Core
                 long version = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
                 List<IGrouping<string, Tuple<int,ConnectionEntity>>> sets = entities
-                .Select((p, i) => new Tuple<int, ConnectionEntity>(i, new ConnectionEntity(p.Item2.Item1, p.Item1, p.Item3, version, excludePorperties: p.Item2.Item2)))
+                .Select((p, i) => new Tuple<int, ConnectionEntity>(i, new ConnectionEntity(p.Item1, p.Item1.Source.EntityId.Value, p.Item1.Destination.EntityId.Value, version, excludePorperties: p.Item2)))
                 .GroupBy(p => p.Item2.Label).ToList();
 
                 Symbol row = new Symbol();
@@ -195,9 +199,9 @@ namespace N4pper.Ogm.Core
                     sb.Append($"MATCH ({d} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.DestinationId)}}}) ");
                     sb.Append($"MERGE ({s})-");
                     sb.Append($"[{r}:`{set.Key}` {{" +
-                        $"{nameof(Connection.SourcePropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.SourcePropertyName)}," +
-                        $"{nameof(Connection.DestinationPropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.DestinationPropertyName)}," +
-                        $"{nameof(Connection.Order)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.Order)}" +
+                        $"{nameof(OgmConnection.SourcePropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.SourcePropertyName)}," +
+                        $"{nameof(OgmConnection.DestinationPropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.DestinationPropertyName)}," +
+                        $"{nameof(OgmConnection.Order)}:{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.Order)}" +
                         $"}}]");
                     sb.Append($"->({d}) ");
                     sb.Append($"ON CREATE SET {r}+={row}.{nameof(RelEntity.Properties)},{r}.{nameof(IOgmEntity.EntityId)}=id({r}) ");
@@ -217,18 +221,18 @@ namespace N4pper.Ogm.Core
                     sb.Append($"MATCH ({d} {{{nameof(IOgmEntity.EntityId)}:{row}.{nameof(RelEntity.DestinationId)}}}) ");
                     sb.Append($"MATCH ({s})-");
                     sb.Append($"[{r}:`{set.Key}` {{" +
-                        $"{nameof(Connection.SourcePropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.SourcePropertyName)}," +
-                        $"{nameof(Connection.DestinationPropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.DestinationPropertyName)}," +
-                        $"{nameof(Connection.Order)}:{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.Order)}" +
+                        $"{nameof(OgmConnection.SourcePropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.SourcePropertyName)}," +
+                        $"{nameof(OgmConnection.DestinationPropertyName)}:{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.DestinationPropertyName)}," +
+                        $"{nameof(OgmConnection.Order)}:{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.Order)}" +
                         $"}}]");
                     sb.Append($"->({d}) ");
-                    sb.Append($"WHERE EXISTS({r}.{nameof(Connection.Version)}) AND {r}.{nameof(Connection.Version)}<>{row}.{nameof(RelEntity.Properties)}.{nameof(Connection.Version)} ");
+                    sb.Append($"WHERE EXISTS({r}.{nameof(OgmConnection.Version)}) AND {r}.{nameof(OgmConnection.Version)}<>{row}.{nameof(RelEntity.Properties)}.{nameof(OgmConnection.Version)} ");
                     sb.Append($"DELETE {r}");
 
                     runner.Execute(sb.ToString(), batch);
                 }                
 
-                return results.OrderBy(p => p.Item1).Select(p => p.Item2 as Connection).ToList();
+                return results.OrderBy(p => p.Item1).Select(p => p.Item2 as IOgmConnection).ToList();
             }
         }
 
@@ -260,7 +264,7 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
+        public override IEnumerable<IOgmConnection> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
@@ -284,7 +288,7 @@ namespace N4pper.Ogm.Core
                 sb.Append($"SET {m}+={row}.{nameof(RelEntity.Properties)} ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item1, -1, -1, excludePorperties: p.Item2).ToPropDictionary()).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item1, -1, -1, excludePorperties: p.Item2).ToPropDictionary()).ToList() }).ToList().Select(p=>p as IOgmConnection);
             }
         }
     }

@@ -9,6 +9,6 @@ namespace UnitTest.TestModel
     {
         int Index { get; set; }
         User Owner { get; set; }
-        List<User> Contributors { get; set; }
+        ICollection<User> Contributors { get; set; }
     }
 }

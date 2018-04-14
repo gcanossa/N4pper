@@ -40,12 +40,12 @@ namespace N4pper.Ogm.Core
             }
         }
 
-        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities)
+        public override IEnumerable<IOgmConnection> CreateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             runner = runner ?? throw new ArgumentNullException(nameof(runner));
             entities = entities ?? throw new ArgumentNullException(nameof(entities));
 
-            entities = entities.Where(p => p != null && p.Item2 != null);
+            entities = entities.Where(p => p?.Item1 != null);
 
             if (entities.Count() == 0)
                 return null;
@@ -68,7 +68,7 @@ namespace N4pper.Ogm.Core
                 sb.Append($"SET {m}.{nameof(IOgmEntity.EntityId)}=id({m}) ");
                 sb.Append($"RETURN {m}");
 
-                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item2.Item1, p.Item1, p.Item3, false, excludePorperties: p.Item2.Item2).ToPropDictionary()).ToList() }).ToList();
+                return runner.ExecuteQuery<IOgmEntity>(sb.ToString(), new { batch = entities.Select(p => new RelEntity(p.Item1, p.Item1.Source.EntityId.Value, p.Item1.Destination.EntityId.Value, false, excludePorperties: p.Item2).ToPropDictionary()).ToList() }).ToList().Select(p=>p as IOgmConnection);
             }
         }
     }

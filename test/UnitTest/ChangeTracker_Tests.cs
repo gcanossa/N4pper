@@ -18,6 +18,17 @@ namespace UnitTest
 {
     public class ChangeTracker_Tests
     {
+        public class Connection : IOgmConnection
+        {
+            public virtual IOgmEntity Source { get; set; }
+            public virtual IOgmEntity Destination { get; set; }
+            public virtual string SourcePropertyName { get; set; }
+            public virtual string DestinationPropertyName { get; set; }
+            public virtual int Order { get; set; }
+            public virtual long Version { get; set; }
+            public virtual long? EntityId { get; set; }
+        }
+
         public static IEnumerable<object[]> GetChangeTrackers()
         {
             yield return new[] { new DefaultChangeTracker() };
@@ -174,7 +185,8 @@ namespace UnitTest
             tracker.Track(new EntityChangeRelDeletion(rel));
             Assert.Equal(3, tracker.GetChangeLog().Count());
 
-            Assert.Throws<InvalidOperationException>(() => tracker.Track(new EntityChangeRelDeletion(rel3)));
+            tracker.Track(new EntityChangeRelDeletion(rel3));
+            Assert.Equal(3, tracker.GetChangeLog().Count());
 
             tracker.Track(new EntityChangeRelCreation(rel3, book, book3));
             Assert.Equal(4, tracker.GetChangeLog().Count());
@@ -221,6 +233,39 @@ namespace UnitTest
 
             Assert.Throws<ArgumentException>(() => tracker.Track(new EntityChangeRelUpdate(rel, typeof(Connection).GetProperty(nameof(Connection.Version)), rel.Version, "pippo")));
             Assert.Throws<InvalidOperationException>(() => tracker.Track(new EntityChangeRelUpdate(rel3, typeof(Connection).GetProperty(nameof(Connection.Version)), rel.Version, rel.Version = 1)));
+        }
+
+
+        [Trait("Category", nameof(ChangeTracker_Tests))]
+        [Theory(DisplayName = nameof(RelMerge))]
+        [MemberData(nameof(GetChangeTrackers))]
+        public void RelMerge(ChangeTrackerBase tracker)
+        {
+            Assert.Empty(tracker.GetChangeLog());
+
+            Book book = new Book();
+            Book book2 = new Book();
+            Book book3 = new Book() { EntityId = 1 };
+            Book book4 = new Book();
+            Book book5 = new Book() { EntityId = 2 };
+            Connection rel = new Connection();
+            Connection rel2 = new Connection() { EntityId = 1 };
+            Connection rel3 = new Connection();
+
+            tracker.Track(new EntityChangeNodeCreation(book));
+            tracker.Track(new EntityChangeNodeCreation(book2));
+            tracker.Track(new EntityChangeNodeDeletion(book5));
+            Assert.Equal(3, tracker.GetChangeLog().Count());
+
+            tracker.Track(new EntityChangeConnectionMerge(rel, book, book3, 0));
+            Assert.Equal(4, tracker.GetChangeLog().Count());
+            tracker.Track(new EntityChangeConnectionMerge(rel, book, book3, 1));
+            Assert.Equal(4, tracker.GetChangeLog().Count());
+            tracker.Track(new EntityChangeRelUpdate(rel, typeof(Connection).GetProperty(nameof(Connection.SourcePropertyName)), rel2.SourcePropertyName, rel2.SourcePropertyName = "pippo"));
+            Assert.Equal(4, tracker.GetChangeLog().Count());
+
+            tracker.Track(new EntityChangeConnectionMerge(rel, book, book2, 0));
+            Assert.Equal(4, tracker.GetChangeLog().Count());
         }
     }
 }

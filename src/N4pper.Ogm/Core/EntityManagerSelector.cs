@@ -31,7 +31,7 @@ namespace N4pper.Ogm.Core
             return SelectManager(runner).CreateNodes(runner, entities);
         }
 
-        public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities)
+        public override IEnumerable<IOgmConnection> CreateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             return SelectManager(runner).CreateRels(runner, entities);
         }
@@ -41,7 +41,7 @@ namespace N4pper.Ogm.Core
             SelectManager(runner).DeleteNodes(runner, entities);
         }
 
-        public override void DeleteRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+        public override void DeleteRels(IStatementRunner runner, IEnumerable<IOgmConnection> entities)
         {
             SelectManager(runner).DeleteRels(runner, entities);
         }
@@ -51,12 +51,12 @@ namespace N4pper.Ogm.Core
             return SelectManager(runner).UpdateNodes(runner, entities);
         }
 
-        public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
+        public override IEnumerable<IOgmConnection> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             return SelectManager(runner).UpdateRels(runner, entities);
         }
 
-        public override IEnumerable<Connection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>> entities)
+        public override IEnumerable<IOgmConnection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
         {
             return SelectManager(runner).MergeConnections(runner, entities);
         }

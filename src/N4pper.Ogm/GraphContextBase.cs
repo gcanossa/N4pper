@@ -7,6 +7,7 @@ using Castle.DynamicProxy;
 using N4pper.Ogm.Core;
 using N4pper.Ogm.Design;
 using N4pper.Ogm.Entities;
+using N4pper.Ogm.Interceptors;
 using N4pper.Ogm.Queryable;
 using N4pper.Queryable;
 using N4pper.QueryUtils;
@@ -39,8 +40,8 @@ namespace N4pper.Ogm
             if (obj is IProxyTargetAccessor)
                 obj = (IOgmEntity)((IProxyTargetAccessor)obj).DynProxyGetTarget();
 
-            if (obj is Connection)
-                ChangeTracker.Track(new EntityChangeRelDeletion(obj as Connection));
+            if (obj is IOgmConnection)
+                ChangeTracker.Track(new EntityChangeRelDeletion(obj as IOgmConnection));
             else
                 ChangeTracker.Track(new EntityChangeNodeDeletion(obj));
         }
@@ -89,7 +90,34 @@ namespace N4pper.Ogm
                         )
                     )).ToList();
 
-                //TODO: fai relazioni
+                List<Tuple<IOgmConnection, IEnumerable<string>>> creatingRels = temp
+                    .Where(p => p is EntityChangeRelCreation)
+                    .Select(p => new Tuple<IOgmConnection, IEnumerable<string>>(
+                        p.Entity as IOgmConnection,
+                        TypesManager.KnownTypes.ContainsKey(p.Entity.GetType()) ? TypesManager.KnownTypes[p.Entity.GetType()].IgnoredProperties.Select(q => q.Name) : null
+                    )).ToList();
+
+                List<IOgmConnection> deletingRels = temp
+                    .Where(p => p is EntityChangeRelDeletion)
+                    .Select(p => p.Entity as IOgmConnection).ToList();
+
+                List<Tuple<IOgmConnection, IEnumerable<string>>> updatingRels = temp
+                    .Where(p => p is EntityChangeRelUpdate)
+                    .GroupBy(p => p.Entity)
+                    .Select(p => new Tuple<IOgmConnection, IEnumerable<string>>(
+                        p.Key as IOgmConnection,
+                        p.Key.GetType().GetProperties().Select(q => q.Name).Except(p.Select(q => ((EntityChangeRelUpdate)q).Property.Name))
+                        .Union(
+                        TypesManager.KnownTypes.ContainsKey(p.Key.GetType()) ? TypesManager.KnownTypes[p.Key.GetType()].IgnoredProperties.Select(q => q.Name) : new string[0]
+                        )
+                    )).ToList();
+
+                List<Tuple<IOgmConnection, IEnumerable<string>>> mergingRels = temp
+                    .Where(p => p is EntityChangeConnectionMerge)
+                    .Select(p => new Tuple<IOgmConnection, IEnumerable<string>>(
+                        p.Entity as IOgmConnection,
+                        TypesManager.KnownTypes.ContainsKey(p.Entity.GetType()) ? TypesManager.KnownTypes[p.Entity.GetType()].IgnoredProperties.Select(q => q.Name) : null
+                    )).ToList();
 
                 List<IOgmEntity> createdNodes = EntityManager.CreateNodes(Runner, creatingNodes)?.ToList();
                 EntityManager.UpdateNodes(Runner, updatingNodes);
@@ -100,8 +128,22 @@ namespace N4pper.Ogm
                     creatingNodes[i].Item1.EntityId = createdNodes[i].EntityId;
                 }
 
-                //TODO: fai relazioni
+                List<IOgmConnection> createdRels = EntityManager.CreateRels(Runner, creatingRels)?.ToList();
 
+                List<IOgmConnection> mergedRels = EntityManager.MergeConnections(Runner, mergingRels)?.ToList();
+
+                EntityManager.UpdateRels(Runner, updatingRels);
+                EntityManager.DeleteRels(Runner, deletingRels);
+
+                for (int i = 0; i < (createdRels?.Count ?? 0); i++)
+                {
+                    creatingRels[i].Item1.EntityId = createdRels[i].EntityId;
+                }
+                for (int i = 0; i < (mergedRels?.Count ?? 0); i++)
+                {
+                    mergingRels[i].Item1.EntityId = mergedRels[i].EntityId;
+                }
+                
                 ChangeTracker.Clear();
             }
             catch(Exception e)
@@ -130,11 +172,17 @@ namespace N4pper.Ogm
             ChangeTracker = changeTracker ?? throw new ArgumentNullException(nameof(changeTracker));
             EntityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
 
-            ProxyGenerator = new ProxyGenerator();
             Interceptors = new List<IInterceptor>();
-            Interceptors.Add(new OgmCoreProxyInterceptor(this));
+            Interceptors.Add(new OgmCoreProxyPrimitiveInterceptor(this));
+            Interceptors.Add(new OgmCoreProxyEntityInterceptor(this));
+            Interceptors.Add(new OgmCoreProxyEntityCollectionSetterInterceptor(this));
+            Interceptors.Add(new OgmCoreProxyEntityCollectionGetterInterceptor(this));
 
-            ObjectWalker = new ObjectGraphWalker(ProxyGenerator, typesManager,changeTracker, Interceptors);
+            ProxyGenerationOptions options = new ProxyGenerationOptions() { Selector = new OgmCoreProxyInterceptorSelector(this) };
+            options.AddMixinInstance(new Dictionary<string, object>());
+            ProxyGenerator = new ProxyGenerator();
+
+            ObjectWalker = new ObjectGraphWalker(ProxyGenerator, options, typesManager,changeTracker, Interceptors);
         }
 
         public GraphContextBase(IStatementRunner runner, TypesManager typesManager, ChangeTrackerBase changeTracker, EntityManagerBase entityManager)
@@ -247,12 +295,12 @@ namespace N4pper.Ogm
 
         #endregion
 
-        private bool _disposed = false;
+        internal bool IsDisposed { get; private set; } = false;
         public void Dispose()
         {
-            if (!_disposed)
+            if (!IsDisposed)
             {
-                _disposed = true;
+                IsDisposed = true;
 
                 ChangeTracker.Clear();
                 ChangeTracker = null;

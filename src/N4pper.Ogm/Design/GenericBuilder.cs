@@ -83,12 +83,9 @@ namespace N4pper.Ogm.Design
         }
 
         public IReverseTypedConnectionBuilder<D, C, T> ConnectedWith<C, D>(Expression<Func<T, C>> source = null)
-            where C : Entities.ExplicitConnection<T, D>
+            where C : class, Entities.IOgmConnection<T, D>
             where D : class, Entities.IOgmEntity
         {
-            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(C)) && typeof(C).BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
-                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
-
             IEnumerable<string> fromP = null;
             if (source != null)
             {
@@ -103,12 +100,9 @@ namespace N4pper.Ogm.Design
         }
 
         public IReverseTypedConnectionBuilder<D, C, T> ConnectedManyWith<C, D>(Expression<Func<T, IEnumerable<C>>> source = null)
-            where C : Entities.ExplicitConnection<T, D>
+            where C : class, Entities.IOgmConnection<T, D>
             where D : class, Entities.IOgmEntity
         {
-            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(typeof(C)) && typeof(C).BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
-                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
-
             IEnumerable<string> fromP = null;
             if (source != null)
             {

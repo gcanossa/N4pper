@@ -73,15 +73,15 @@ namespace UnitTest
             protected long CurrentId { get; set; } = 0;
 
             public List<Tuple<IOgmEntity, IEnumerable<string>>> CreatedNodes = new List<Tuple<IOgmEntity, IEnumerable<string>>>();
-            public List<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> CreatedRels = new List<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>>();
+            public List<Tuple<IOgmConnection, IEnumerable<string>>> CreatedRels = new List<Tuple<IOgmConnection, IEnumerable<string>>>();
 
             public List<IOgmEntity> DeletedNodes = new List<IOgmEntity>();
-            public List<IOgmEntity> DeletedRels = new List<IOgmEntity>();
+            public List<IOgmConnection> DeletedRels = new List<IOgmConnection>();
 
             public List<Tuple<IOgmEntity, IEnumerable<string>>> UpdatedNodes = new List<Tuple<IOgmEntity, IEnumerable<string>>>();
-            public List<Tuple<IOgmEntity, IEnumerable<string>>> UpdatedRels = new List<Tuple<IOgmEntity, IEnumerable<string>>>();
+            public List<Tuple<IOgmConnection, IEnumerable<string>>> UpdatedRels = new List<Tuple<IOgmConnection, IEnumerable<string>>>();
 
-            public List<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>> ConnectionMerge = new List<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>>();
+            public List<Tuple<IOgmConnection, IEnumerable<string>>> ConnectionMerge = new List<Tuple<IOgmConnection, IEnumerable<string>>>();
 
             public override IEnumerable<IOgmEntity> CreateNodes(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
             {
@@ -95,16 +95,16 @@ namespace UnitTest
                 return entities.Select(p => p.Item1);
             }
 
-            public override IEnumerable<IOgmEntity> CreateRels(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<IOgmEntity, IEnumerable<string>>, long>> entities)
+            public override IEnumerable<IOgmConnection> CreateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
             {
                 CreatedRels.Clear();
                 CreatedRels.AddRange(entities);
 
                 foreach (var item in entities)
                 {
-                    item.Item2.Item1.EntityId = CurrentId++;
+                    item.Item1.EntityId = CurrentId++;
                 }
-                return entities.Select(p => p.Item2.Item1);
+                return entities.Select(p => p.Item1);
             }
 
             public override void DeleteNodes(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
@@ -113,7 +113,7 @@ namespace UnitTest
                 DeletedNodes.AddRange(entities);
             }
 
-            public override void DeleteRels(IStatementRunner runner, IEnumerable<IOgmEntity> entities)
+            public override void DeleteRels(IStatementRunner runner, IEnumerable<IOgmConnection> entities)
             {
                 DeletedRels.Clear();
                 DeletedRels.AddRange(entities);
@@ -127,7 +127,7 @@ namespace UnitTest
                 return entities.Select(p => p.Item1);
             }
 
-            public override IEnumerable<IOgmEntity> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmEntity, IEnumerable<string>>> entities)
+            public override IEnumerable<IOgmConnection> UpdateRels(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
             {
                 UpdatedRels.Clear();
                 UpdatedRels.AddRange(entities);
@@ -135,12 +135,12 @@ namespace UnitTest
                 return entities.Select(p => p.Item1);
             }
 
-            public override IEnumerable<Connection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<long, Tuple<Connection, IEnumerable<string>>, long>> entities)
+            public override IEnumerable<IOgmConnection> MergeConnections(IStatementRunner runner, IEnumerable<Tuple<IOgmConnection, IEnumerable<string>>> entities)
             {
                 ConnectionMerge.Clear();
                 ConnectionMerge.AddRange(entities);
 
-                return entities.Select(p => p.Item2.Item1);
+                return entities.Select(p => p.Item1);
             }
         }
 
@@ -200,6 +200,49 @@ namespace UnitTest
                 Assert.Equal(1, testManager.DeletedNodes.Count);
 
                 Assert.Equal(orgBook, testManager.DeletedNodes[0]);
+            }
+        }
+
+        [TestPriority(10)]
+        [Trait("Category", nameof(N4pper_Ogm_MockTests))]
+        [Fact(DisplayName = nameof(Complex_Graph))]
+        public void Complex_Graph()
+        {
+            TestEntityManager testManager = new TestEntityManager();
+            using (GraphContext ctx = GetContext(testManager))
+            {
+                Book orgBook;
+                Book book = new Book() { Name = "Prova" };
+                orgBook = book;
+
+                book = ctx.Add(book);
+
+                book.Index = 1;
+
+                Assert.Empty(testManager.CreatedNodes);
+
+                ctx.SaveChanges();
+
+                Assert.Equal(1, testManager.CreatedNodes.Count);
+                Assert.Equal("Prova", testManager.CreatedNodes[0].Item1.GetPropValue("Name"));
+                
+                Chapter chapter1 = new Chapter() { Name = "Capitolo 1" };
+                Chapter chapter2 = new Chapter() { Name = "Capitolo 2" };
+
+                book.Chapters.Add(chapter1);
+                Assert.Equal(book, chapter1.Book);
+
+                ctx.SaveChanges();
+
+                Assert.Equal(1, testManager.ConnectionMerge.Count(p=>p.Item1.Source == book));
+
+                chapter2.Book = book;
+                Assert.Equal(2, book.Chapters.Count());
+                Assert.True(book.Chapters.Contains(chapter2));
+
+                ctx.SaveChanges();
+
+                Assert.Equal(2, testManager.ConnectionMerge.Count(p => p.Item1.Source == book));
             }
         }
     }

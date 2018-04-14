@@ -4,6 +4,7 @@ using N4pper.Ogm.Design;
 using N4pper.Ogm.Entities;
 using OMnG;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -16,11 +17,24 @@ namespace N4pper.Ogm
         protected TypesManager TypesManager { get; set; }
         protected ChangeTrackerBase ChangeTracker { get; set; }
         protected ProxyGenerator ProxyGenerator { get; set; }
+        protected ProxyGenerationOptions ProxyGenerationOptions { get; set; }
         protected List<IInterceptor> Interceptors { get; set; }
 
-        public ObjectGraphWalker(ProxyGenerator proxyGenerator, TypesManager typesManager, ChangeTrackerBase changeTracker, IEnumerable<IInterceptor> interceptors)
+        protected Dictionary<Type, MethodInfo> ManagedCollections { get; set; } = new Dictionary<Type, MethodInfo>();
+
+        private void ManageCollection<T>(object obj) where T : IOgmEntity
+        {
+            ICollection<T> collection = (ICollection<T>)obj;
+            List<IOgmEntity> old = collection.Select(p=>(IOgmEntity)p).ToList();
+            collection.Clear();
+
+            old.ForEach(p => collection.Add((T)Visit(p)));
+        }
+
+        public ObjectGraphWalker(ProxyGenerator proxyGenerator, ProxyGenerationOptions proxyGenerationOptions, TypesManager typesManager, ChangeTrackerBase changeTracker, IEnumerable<IInterceptor> interceptors)
         {
             ProxyGenerator = proxyGenerator ?? throw new ArgumentNullException(nameof(proxyGenerator));
+            ProxyGenerationOptions = proxyGenerationOptions ?? throw new ArgumentNullException(nameof(proxyGenerationOptions));
             TypesManager = typesManager ?? throw new ArgumentNullException(nameof(typesManager));
             ChangeTracker = changeTracker ?? throw new ArgumentNullException(nameof(changeTracker));
 
@@ -29,6 +43,9 @@ namespace N4pper.Ogm
 
         public IOgmEntity Visit(IOgmEntity entity)
         {
+            while ((entity as IDictionary<string, object>) != null && (entity as IDictionary<string, object>)["000_ChangeTracker"] != ChangeTracker)
+                entity = (entity as IProxyTargetAccessor)?.DynProxyGetTarget() as IOgmEntity;
+
             if (entity == null)
                 return entity;
             if (entity is IProxyTargetAccessor)
@@ -37,28 +54,30 @@ namespace N4pper.Ogm
             {
                 using (ManagerAccess.Manager.ScopeOMnG())
                 {
-                    ProxyGenerationOptions options = new ProxyGenerationOptions();
-                    options.AddMixinInstance(new Dictionary<string, object>());
-                    IOgmEntity result = (IOgmEntity)ProxyGenerator.CreateClassProxyWithTarget(entity.GetType(), entity, options, Interceptors.ToArray());
+                    IOgmEntity result = (IOgmEntity)ProxyGenerator.CreateClassProxyWithTarget(entity.GetType(), entity, ProxyGenerationOptions, Interceptors.ToArray());
 
-                    if(entity.EntityId==null)
+                    (result as IDictionary<string, object>).Add("000_ChangeTracker", ChangeTracker);
+
+                    if (entity.EntityId==null)
                     {
                         ChangeTracker.Track(new EntityChangeNodeCreation(entity));
                     }
 
-                    //TODO: invece di ICollection<IOgmEntity> usa IsGraphEntityCollection
                     foreach (PropertyInfo pinfo in entity.GetType().GetProperties()
-                        .Where(p => typeof(IOgmEntity).IsAssignableFrom(p.PropertyType) || typeof(ICollection<IOgmEntity>).IsAssignableFrom(p.PropertyType))
+                        .Where(p => !ObjectExtensions.IsPrimitive(p.PropertyType) && TypesManager.IsGraphProperty(p))
                         .Where(p => !TypesManager.KnownTypes.ContainsKey(p.ReflectedType) || !TypesManager.KnownTypes[p.ReflectedType].IgnoredProperties.Contains(p)))
                     {
                         object obj = ObjectExtensions.Configuration.Get(pinfo, entity);
 
-                        ICollection<IOgmEntity> collection = obj as ICollection<IOgmEntity>;
+                        IEnumerable collection = obj as IEnumerable;
                         if (collection != null)
                         {
-                            List<IOgmEntity> old = collection.ToList();
-                            collection.Clear();
-                            old.ForEach(p=>collection.Add(Visit(p)));
+                            if (!ManagedCollections.ContainsKey(obj.GetType().GetGenericArguments()[0]))
+                                ManagedCollections.Add(
+                                    obj.GetType().GetGenericArguments()[0],
+                                    GetType().GetMethod(nameof(ManageCollection), BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.InvokeMethod).MakeGenericMethod(obj.GetType().GetGenericArguments()[0]));
+
+                            ManagedCollections[obj.GetType().GetGenericArguments()[0]].Invoke(this, new[] { obj });
                         }
                         else
                         {

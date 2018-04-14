@@ -28,6 +28,17 @@ namespace UnitTest
             Fixture = fixture;
         }
 
+        public class Connection : IOgmConnection
+        {
+            public virtual IOgmEntity Source { get; set; }
+            public virtual IOgmEntity Destination { get; set; }
+            public virtual string SourcePropertyName { get; set; }
+            public virtual string DestinationPropertyName { get; set; }
+            public virtual int Order { get; set; }
+            public virtual long Version { get; set; }
+            public virtual long? EntityId { get; set; }
+        }
+
         #region nested generators
 
         public static IEnumerable<object[]> GetEntityManagers()
@@ -122,7 +133,7 @@ namespace UnitTest
 
                 List<IOgmEntity> res = mgr.CreateNodes(session, new IOgmEntity[] { book, chapter }).ToList();
 
-                List<IOgmEntity> rels = mgr.CreateRels(session, new Tuple<long, IOgmEntity, long> []{ new Tuple<long, IOgmEntity, long>(res[0].EntityId.Value, new Connection(), res[1].EntityId.Value) }).ToList();
+                List<IOgmConnection> rels = mgr.CreateRels(session, new Connection[] { new Connection() { Source = res[0], Destination = res[1] } }).ToList();
 
                 Assert.Equal(
                     1,
@@ -132,7 +143,7 @@ namespace UnitTest
 
                 (rels[0] as Connection).SourcePropertyName = "test";
 
-                List<IOgmEntity> rels2 = mgr.UpdateRels(session, rels).ToList();
+                List<IOgmConnection> rels2 = mgr.UpdateRels(session, rels).ToList();
 
                 Assert.Equal(
                     1,
@@ -191,22 +202,26 @@ namespace UnitTest
                         .Count()
                     );
 
-                List<Connection> conns = mgr.MergeConnections(session, new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>[]
+                List<IOgmConnection> conns = mgr.MergeConnections(session, new Tuple<IOgmConnection, IEnumerable<string>>[]
                 {
-                    new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>(
-                        (long)(res.First(p => p is Book) as Book).EntityId,
-                        new Tuple<Connection, IEnumerable<string>>(new Connection(){ SourcePropertyName="source", DestinationPropertyName="destination", Order=1 }, new string[]{ nameof(IOgmEntity.EntityId) }),
-                        (long)(res.First(p => p is Chapter) as Chapter).EntityId)
+                    new Tuple<IOgmConnection, IEnumerable<string>>(new Connection(){
+                        Source =res.First(p => p is Book),
+                        Destination = res.First(p => p is Chapter),
+                        SourcePropertyName ="source",
+                        DestinationPropertyName ="destination",
+                        Order =1 }, new string[]{ nameof(IOgmEntity.EntityId) })
                 }).ToList();
 
                 Assert.Equal(1, conns.Count);
 
-                conns = mgr.MergeConnections(session, new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>[]
+                conns = mgr.MergeConnections(session, new Tuple<IOgmConnection, IEnumerable<string>>[]
                 {
-                    new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>(
-                        (long)(res.First(p => p is Book) as Book).EntityId,
-                        new Tuple<Connection, IEnumerable<string>>(new Connection(){ SourcePropertyName="source", DestinationPropertyName="destination", Order=1 }, new string[]{ nameof(IOgmEntity.EntityId) }),
-                        (long)(res.First(p => p is Chapter) as Chapter).EntityId)
+                    new Tuple<IOgmConnection, IEnumerable<string>>(new Connection(){
+                        Source =res.First(p => p is Book),
+                        Destination = res.First(p => p is Chapter),
+                        SourcePropertyName ="source",
+                        DestinationPropertyName ="destination",
+                        Order =1 }, new string[]{ nameof(IOgmEntity.EntityId) })
                 }).ToList();
 
                 Assert.Equal(1, conns.Count);
@@ -221,12 +236,14 @@ namespace UnitTest
 
                 mgr.DeleteNodes(session, res);
 
-                conns = mgr.MergeConnections(session, new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>[]
+                conns = mgr.MergeConnections(session, new Tuple<IOgmConnection, IEnumerable<string>>[]
                 {
-                    new Tuple<long, Tuple<Connection, IEnumerable<string>>, long>(
-                        (long)(res.First(p => p is Book) as Book).EntityId,
-                        new Tuple<Connection, IEnumerable<string>>(new Connection(){ SourcePropertyName="source", DestinationPropertyName="destination", Order=1 }, new string[]{ nameof(IOgmEntity.EntityId) }),
-                        (long)(res.First(p => p is Chapter) as Chapter).EntityId)
+                    new Tuple<IOgmConnection, IEnumerable<string>>(new Connection(){
+                        Source =res.First(p => p is Book),
+                        Destination = res.First(p => p is Chapter),
+                        SourcePropertyName ="source",
+                        DestinationPropertyName ="destination",
+                        Order =1 }, new string[]{ nameof(IOgmEntity.EntityId) })
                 }).ToList();
 
                 Assert.Equal(0, conns.Count);

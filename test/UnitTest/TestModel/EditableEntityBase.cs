@@ -9,6 +9,6 @@ namespace UnitTest.TestModel
         public virtual long? EntityId { get; set; }
         public virtual int Index { get; set; }
         public virtual User Owner { get; set; }
-        public virtual List<User> Contributors { get; set; }
+        public virtual ICollection<User> Contributors { get; set; }
     }
 }

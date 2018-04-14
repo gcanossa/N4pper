@@ -72,7 +72,7 @@ namespace N4pper.Ogm
                     {
                         { p => (p as IGraphManagedStatementRunner)?.IsApocAvailable ?? false, new ApocEntityManager() }
                     }));
-            ext.AddSingleton<ChangeTrackerBase, DefaultChangeTracker>();
+            ext.AddTransient<ChangeTrackerBase, DefaultChangeTracker>();
             ext.AddSingleton<TypesManager, TypesManager>();
 
             return new GraphContextConfigurator(ext);

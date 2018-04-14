@@ -8,6 +8,6 @@ namespace UnitTest.TestModel
     {
         public virtual string Name { get; set; }
         public virtual Book Book { get; set; }
-        public virtual List<Section> Sections { get; set; }
+        public virtual ICollection<Section> Sections { get; set; }
     }
 }

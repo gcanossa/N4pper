@@ -14,7 +14,9 @@ namespace N4pper.Ogm.Design
     {
         public TypesManager()
         {
-            Entity<Entities.Connection>();
+            KnownTypes.Add(typeof(Entities.OgmConnection), new KnownTypeDescriptor());
+            KnownTypes[typeof(Entities.OgmConnection)].IgnoredProperties.Add(typeof(Entities.IOgmConnection).GetProperty(nameof(Entities.IOgmConnection.Source)));
+            KnownTypes[typeof(Entities.OgmConnection)].IgnoredProperties.Add(typeof(Entities.IOgmConnection).GetProperty(nameof(Entities.IOgmConnection.Destination)));
         }
         
         public IDictionary<Type, KnownTypeDescriptor> KnownTypes { get; protected set; } = new Dictionary<Type, KnownTypeDescriptor>();
@@ -32,9 +34,10 @@ namespace N4pper.Ogm.Design
         }
         public bool IsGraphEntityCollection(Type type)
         {
-            return typeof(ICollection).IsAssignableFrom(type) &&
+            return
                 type.IsGenericType &&
-                typeof(IOgmEntity).IsAssignableFrom(type.GetGenericArguments()[0]);
+                typeof(IOgmEntity).IsAssignableFrom(type.GetGenericArguments()[0]) &&
+                typeof(ICollection<>).MakeGenericType(type.GetGenericArguments()).IsAssignableFrom(type);
         }
 
         public void Entity<T>(bool ignoreUnsupported = false) where T : class, IOgmEntity
@@ -51,16 +54,13 @@ namespace N4pper.Ogm.Design
                 throw new ArgumentException("Unable to manage sealed types.", nameof(type));
             if (type.GetMethods().Where(p=>p.Name != nameof(Object.GetType) && !p.IsSpecialName).Any(p => !p.IsVirtual))
                 throw new ArgumentException("Unable to manage type with non virtual methods",nameof(type));
-
-            if (typeof(Entities.ExplicitConnection).IsAssignableFrom(type) && type.BaseType.GetGenericTypeDefinition() != typeof(Entities.ExplicitConnection<,>))
-                throw new ArgumentException($"An explicit connection must inherit directly from {typeof(Entities.ExplicitConnection<,>).Name}");
-
+            
             List<PropertyInfo> unsupported = type.GetProperties()
                 .Where(
                 p => 
                     (
-                    !typeof(Entities.ExplicitConnection).IsAssignableFrom(type) ||
-                    (p.Name!=nameof(ExplicitConnection.Source) && p.Name != nameof(ExplicitConnection.Destination))
+                    !typeof(IOgmConnection).IsAssignableFrom(type) ||
+                    (p.Name!=nameof(IOgmConnection.Source) && p.Name != nameof(IOgmConnection.Destination))
                     ) && !IsGraphProperty(p)
                 ).ToList();
             if (unsupported.Count > 0 && !ignoreUnsupported)

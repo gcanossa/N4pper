@@ -14,9 +14,9 @@ namespace N4pper.Ogm.Queryable
         IInclude<D> Include<D>(Expression<Func<T, IList<D>>> expr) where D : class, IOgmEntity;
         IInclude<D> Include<D>(Expression<Func<T, List<D>>> expr) where D : class, IOgmEntity;
 
-        IInclude<D> Include<C, D>(Expression<Func<T, C>> expr) where C : ExplicitConnection<T,D> where D : class, IOgmEntity;
-        IInclude<D> Include<C, D>(Expression<Func<T, IEnumerable<C>>> expr) where C : ExplicitConnection<T, D> where D : class, IOgmEntity;
-        IInclude<D> Include<C, D>(Expression<Func<T, IList<C>>> expr) where C : ExplicitConnection<T, D> where D : class, IOgmEntity;
-        IInclude<D> Include<C, D>(Expression<Func<T, List<C>>> expr) where C : ExplicitConnection<T, D> where D : class, IOgmEntity;
+        IInclude<D> Include<C, D>(Expression<Func<T, C>> expr) where C : IOgmConnection<T,D> where D : class, IOgmEntity;
+        IInclude<D> Include<C, D>(Expression<Func<T, IEnumerable<C>>> expr) where C : IOgmConnection<T, D> where D : class, IOgmEntity;
+        IInclude<D> Include<C, D>(Expression<Func<T, IList<C>>> expr) where C : IOgmConnection<T, D> where D : class, IOgmEntity;
+        IInclude<D> Include<C, D>(Expression<Func<T, List<C>>> expr) where C : IOgmConnection<T, D> where D : class, IOgmEntity;
     }
 }

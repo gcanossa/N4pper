@@ -13,8 +13,8 @@ namespace UnitTest.TestModel
         public virtual DateTime Birthday { get; set; }
         public virtual DateTime? Deathday { get; set; }
         public virtual TimeSpan Age { get { return (Deathday ?? DateTime.Now) - Birthday; } }
-        public virtual List<Friend> Friends { get; set; } = new List<Friend>();
+        public virtual ICollection<Friend> Friends { get; set; } = new List<Friend>();
         public virtual Friend BestFriend { get; set; }
-        public virtual List<IContent> OwnedContents { get; set; }
+        public virtual ICollection<IContent> OwnedContents { get; set; }
     }
 }

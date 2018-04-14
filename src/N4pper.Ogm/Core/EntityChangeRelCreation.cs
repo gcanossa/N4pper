@@ -9,14 +9,14 @@ namespace N4pper.Ogm.Core
     {
         public IOgmEntity Source { get; set; }
         public IOgmEntity Destination { get; set; }
-        public EntityChangeRelCreation(Connection entity, IOgmEntity source, IOgmEntity destination) : base(entity)
+        public EntityChangeRelCreation(IOgmConnection entity, IOgmEntity source, IOgmEntity destination) : base(entity)
         {
             Source = source ?? throw new ArgumentNullException(nameof(source));
             Destination = destination ?? throw new ArgumentNullException(nameof(destination));
 
-            if (source is Connection)
+            if (source is IOgmConnection)
                 throw new ArgumentException("A Connection cannot be a source of a connction.", nameof(source));
-            if (destination is Connection)
+            if (destination is IOgmConnection)
                 throw new ArgumentException("A Connection cannot be a destination of a connction.", nameof(destination));
         }
 

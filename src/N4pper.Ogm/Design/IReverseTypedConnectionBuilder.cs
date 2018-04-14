@@ -6,7 +6,10 @@ using System.Text;
 
 namespace N4pper.Ogm.Design
 {
-    public interface IReverseTypedConnectionBuilder<T, C, D> where C : ExplicitConnection<D, T> where T : class, IOgmEntity where D : class, IOgmEntity
+    public interface IReverseTypedConnectionBuilder<T, C, D> 
+        where C : class, IOgmConnection<D, T> 
+        where T : class, IOgmEntity
+        where D : class, IOgmEntity
     {
         void Connected(Expression<Func<T, C>> destination);
         void ConnectedMany(Expression<Func<T, IEnumerable<C>>> destination);
