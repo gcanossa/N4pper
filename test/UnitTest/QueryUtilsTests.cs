@@ -92,6 +92,8 @@ namespace UnitTest
             Assert.Equal("(p)", new Node("p"));
             Assert.Equal("[r]", new Rel("r"));
 
+            Assert.Equal("$test", (Parameter)"test");
+
             Assert.Equal("(p:`UnitTest.Types.Child`:`UnitTest.Types.IUniqueId`:`UnitTest.Types.IMortal`:`UnitTest.Types.Person`)", new Node("p", typeof(Child)));
             Assert.Equal("[r:`UnitTest.Types.Child`]", new Rel("r", typeof(Child)));
 
