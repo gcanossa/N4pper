@@ -6,10 +6,25 @@ using System.Linq;
 
 namespace N4pper.QueryUtils
 {
+    public class Node<T> : Node where T : class
+    {
+        public Node(Symbol symbol = null, IDictionary<string, object> props = null)
+            : base(symbol, typeof(T), props)
+        {
+        }
+        public Node(Symbol symbol, object props)
+            : base(symbol, typeof(T), props?.ToPropDictionary())
+        {
+        }
+    }
     public class Node : EntityBase, INode
     {
         public Node(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
             :base(symbol, type, props)
+        {
+        }
+        public Node(Symbol symbol, Type type, object props)
+            : base(symbol, type, props?.ToPropDictionary())
         {
         }
 

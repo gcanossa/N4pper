@@ -94,7 +94,10 @@ namespace UnitTest
 
             Assert.Equal("(p:`UnitTest.Types.Child`:`UnitTest.Types.IUniqueId`:`UnitTest.Types.IMortal`:`UnitTest.Types.Person`)", new Node("p", typeof(Child)));
             Assert.Equal("[r:`UnitTest.Types.Child`]", new Rel("r", typeof(Child)));
-            
+
+            Assert.Equal("(p:`UnitTest.Types.Child`:`UnitTest.Types.IUniqueId`:`UnitTest.Types.IMortal`:`UnitTest.Types.Person`{Id:3})", new Node<Child>("p", new { Id = 3 }));
+            Assert.Equal("[r:`UnitTest.Types.Child`{Id:3}]", new Rel<Child>("r", new { Id=3 }));
+
             DateTime now = DateTime.Now.TruncateDateToTimeslice(TimeSpan.FromMilliseconds(1));
             Assert.Equal($"(p:`UnitTest.Types.Child`:`UnitTest.Types.IUniqueId`:`UnitTest.Types.IMortal`:`UnitTest.Types.Person`{{Id:1,Name:'Pippo',Birthday:{((DateTimeOffset)now).ToUnixTimeMilliseconds()},Deathday:null}})", new Node("p", typeof(Child), new Child() { Id=1, Name="Pippo", Birthday = now }.SelectPrimitiveTypesProperties()));
             Assert.Equal($"[r:`UnitTest.Types.Child`{{Id:1,Name:'Pippo',Birthday:{((DateTimeOffset)now).ToUnixTimeMilliseconds()},Deathday:null}}]", new Rel("r", typeof(Child), new Child() { Id = 1, Name = "Pippo", Birthday = now }.SelectPrimitiveTypesProperties()));

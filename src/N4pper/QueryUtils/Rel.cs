@@ -6,10 +6,25 @@ using System.Text;
 
 namespace N4pper.QueryUtils
 {
+    public class Rel<T> : Rel where T : class
+    {
+        public Rel(Symbol symbol = null, IDictionary<string, object> props = null)
+            : base(symbol, typeof(T), props)
+        {
+        }
+        public Rel(Symbol symbol, object props)
+            : base(symbol, typeof(T), props?.ToPropDictionary())
+        {
+        }
+    }
     public class Rel : EntityBase, IRel
     {
         public Rel(Symbol symbol = null, Type type = null, IDictionary<string, object> props = null)
             : base(symbol, type, props)
+        {
+        }
+        public Rel(Symbol symbol, Type type, object props)
+            : base(symbol, type, props?.ToPropDictionary())
         {
         }
 
