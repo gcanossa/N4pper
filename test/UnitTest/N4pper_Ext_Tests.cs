@@ -37,7 +37,9 @@ namespace UnitTest
             { nameof(ITestEntity.TimeSpan), new TimeSpan(1, 1, 1)},
             { nameof(ITestEntity.TimeSpanNullable), new TimeSpan(1, 1, 1)},
             { nameof(ITestEntity.String), "String"},
-            { nameof(ITestEntity.Object), new object()}
+            { nameof(ITestEntity.Object), new object()},
+            { nameof(ITestEntity.EnumValue), TestEnum.B},
+            { nameof(ITestEntity.Values), new List<string>(){ "aaa","bbb","ccc" } }
         };
 
         private void PrepareEntity(ITestEntity entity)
@@ -115,6 +117,16 @@ namespace UnitTest
                 Assert.NotNull(val);
                 Assert.Equal(1.2, val.Double);
 
+                val = session.ExecuteQuery<TestNode>($"MATCH {new Node(s, tnode.GetType(), new { Id = 1 }.ToPropDictionary())} SET {s}+=$val RETURN {s}", new { val = new { EnumValue = TestEnum.C, Values = new List<string>() { "aaa","bbb","ccc" } } })
+                    .FirstOrDefault();
+                Assert.NotNull(val);
+                Assert.Equal(TestEnum.C, val.EnumValue);
+
+                val = session.ExecuteQuery<TestNode>($"MATCH {new Node(s, tnode.GetType(), new { Id = 1 }.ToPropDictionary())} SET {s}+=$val RETURN {s}", new { val = new { EnumValue = TestEnum.C, Values = new List<string>() { "aaa", "ccc" } } })
+                    .FirstOrDefault();
+                Assert.NotNull(val);
+                Assert.Equal(new List<string>() { "aaa", "ccc" }, val.Values);
+                
                 IResultSummary result = session.Execute($"MATCH {new Node(s, tnode.GetType(), new { Id = 1 }.ToPropDictionary())} DELETE {s}");
                 Assert.Equal(1, result.Counters.NodesDeleted);
 

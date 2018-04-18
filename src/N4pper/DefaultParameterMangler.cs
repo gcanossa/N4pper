@@ -9,37 +9,55 @@ namespace N4pper
 {
     public class DefaultParameterMangler : IQueryParamentersMangler
     {
-        protected IDictionary<string, object> MangleImpl(object param)
+        private Type GetICollectionT(Type type)
+        {
+            Type innerTp = type.GetInterface("ICollection`1")?.GetGenericArguments()?.First();
+            if (innerTp == null && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ICollection<>))
+                innerTp = type.GetGenericArguments()?.First();
+
+            if (innerTp!=null && (ObjectExtensions.IsPrimitive(innerTp) || innerTp.IsEnum))
+                return innerTp;
+            else
+                return null;
+        }
+
+        protected object MangleValue(object value)
+        {
+            if (value == null)
+                return null;
+            else if (value.IsDateTime())
+            {
+                DateTimeOffset d = value is DateTimeOffset ? (DateTimeOffset)value : (DateTime)value;
+                return d.ToUnixTimeMilliseconds();
+            }
+            else if (value.IsTimeSpan())
+                return ((TimeSpan)value).TotalMilliseconds;
+            else if (value.IsPrimitive())
+                return value;
+            else if (value.GetType().IsEnum)
+                return (int)value;
+            else if (GetICollectionT(value.GetType()) !=null)
+            {
+                List<object> lst = new List<object>();
+                foreach (object item in value as IEnumerable)
+                {
+                    lst.Add(MangleValue(item));
+                }
+                return lst;
+            }
+            else
+                return MangleObject(value);
+        }
+        protected IDictionary<string, object> MangleObject(object param)
         {
             Dictionary<string, object> result = new Dictionary<string, object>();
 
             if (param == null)
                 return result;
-            
+
             foreach (KeyValuePair<string, object> kv in (param is IDictionary<string, object> ? (IDictionary<string, object>)param : param.ToPropDictionary()))
             {
-                if (kv.Value == null)
-                    result.Add(kv.Key, kv.Value);
-                else if (kv.Value.IsDateTime())
-                {
-                    DateTimeOffset d = kv.Value is DateTimeOffset ? (DateTimeOffset)kv.Value : (DateTime)kv.Value;
-                    result.Add(kv.Key, d.ToUnixTimeMilliseconds());
-                }
-                else if (kv.Value.IsTimeSpan())
-                    result.Add(kv.Key, ((TimeSpan)kv.Value).TotalMilliseconds);
-                else if (kv.Value.IsPrimitive())
-                    result.Add(kv.Key, kv.Value);
-                else if (kv.Value is IEnumerable && kv.Value is IDictionary<string, object> == false)
-                {
-                    List<IDictionary<string, object>> lst = new List<IDictionary<string, object>>();
-                    foreach (object item in kv.Value as IEnumerable)
-                    {
-                        lst.Add(MangleImpl(item));
-                    }
-                    result.Add(kv.Key, lst);
-                }
-                else
-                    result.Add(kv.Key, MangleImpl(kv.Value));
+                result.Add(kv.Key, MangleValue(kv.Value));
             }
 
             return result;
@@ -48,7 +66,7 @@ namespace N4pper
         {
             using (ManagerAccess.Manager.ScopeOMnG())
             {
-                return MangleImpl(param);
+                return MangleObject(param) as IDictionary<string, object>;
             }
         }
     }

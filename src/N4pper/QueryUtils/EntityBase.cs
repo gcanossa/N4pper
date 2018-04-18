@@ -47,7 +47,7 @@ namespace N4pper.QueryUtils
             {
                 if (ObjectExtensions.IsDateTime(value.GetType()))
                 {
-                    DateTimeOffset d = value is DateTimeOffset? (DateTimeOffset)value : (DateTime)value;
+                    DateTimeOffset d = value is DateTimeOffset ? (DateTimeOffset)value : (DateTime)value;
                     return d.ToUnixTimeMilliseconds().ToString();
                 }
                 else if (ObjectExtensions.IsTimeSpan(value.GetType()))
@@ -56,6 +56,8 @@ namespace N4pper.QueryUtils
                 }
                 else if (Type.GetTypeCode(value.GetType()) == TypeCode.String)
                     return $"'{value}'";
+                else if (value.GetType().IsEnum)
+                    return $"{(int)value}";
                 else if (ObjectExtensions.IsPrimitive(value.GetType()))
                 {
                     NumberFormatInfo nfi = new NumberFormatInfo();
@@ -78,7 +80,7 @@ namespace N4pper.QueryUtils
                         p.Value == null ||
                         p.Value is Parameter ||
                         p.Value is Symbol ||
-                        (ObjectExtensions.IsPrimitive(p.Value.GetType()) && (Type.GetProperty(p.Key)?.CanRead ?? true) && (Type.GetProperty(p.Key)?.CanWrite ?? true))
+                        ((ObjectExtensions.IsPrimitive(p.Value.GetType()) || p.Value.GetType().IsEnum) && (Type.GetProperty(p.Key)?.CanRead ?? true) && (Type.GetProperty(p.Key)?.CanWrite ?? true))
                         )
                     .Select(p => $"{p.Key}:{HandleValue(p.Value)}")) + "}";
             }

@@ -54,6 +54,29 @@ namespace N4pper
             else
                 return null;
         }
+
+        private object TryWrapList(object obj, KeyValuePair<string, object> p)
+        {
+            Type tp = obj.GetType().GetProperty(p.Key).PropertyType;
+            Type innerTp = tp.GetInterface("ICollection`1")?.GetGenericArguments()?.First();
+            if (innerTp == null && tp.IsGenericType && tp.GetGenericTypeDefinition() == typeof(ICollection<>))
+                innerTp = tp.GetGenericArguments()?.First();
+
+            if (innerTp != null
+                && ObjectExtensions.IsPrimitive(innerTp))
+            {
+                object val = (IList)Activator.CreateInstance(tp.IsInterface || tp.IsAbstract ? typeof(List<>).MakeGenericType(innerTp) : tp);
+                MethodInfo m = tp.GetMethod("Add");
+                foreach (object item in (IEnumerable)p.Value)
+                {
+                    m.Invoke(val, new[] { item });
+                }
+                return val;
+            }
+            else
+                return null;
+        }
+
         private object MapEntity(Type assigningType, IEntity entity)
         {
             assigningType = assigningType ?? throw new ArgumentNullException(nameof(assigningType));
@@ -68,7 +91,15 @@ namespace N4pper
                 obj = new string[] { ((IRelationship)entity).Type }.GetTypesFromLabels().GetInstanceOfMostSpecific();
             }
 
-            return obj.CopyProperties(entity.Properties.ToDictionary(p => p.Key, p => p.Value));
+            return obj.CopyProperties(entity.Properties.ToDictionary(p => p.Key, p => 
+            {
+                object tmp = TryWrapList(obj, p);
+
+                if (tmp != null)
+                    return tmp;
+                else
+                    return p.Value;
+            }));
         }
     }
 }

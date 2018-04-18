@@ -24,7 +24,7 @@ namespace N4pper
             query = query ?? throw new ArgumentNullException(nameof(query));
 
             if (param != null)
-                return new Statement(query, runner.AsManaged().MangleParameters(param));
+                return new Statement(query, param.ToPropDictionary());
             else
                 return new Statement(query);
         }
