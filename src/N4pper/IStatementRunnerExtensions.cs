@@ -11,6 +11,7 @@ using N4pper.Queryable;
 using System.Reflection;
 using System.Collections;
 using qu = N4pper.QueryUtils;
+using System.Threading;
 
 namespace N4pper
 {
@@ -18,29 +19,54 @@ namespace N4pper
     {
         #region helpers
 
-        private static IQueryParamentersMangler ParamMangler = new DefaultParameterMangler();
-        private static IRecordHandler RecordHandler = new DefaultRecordHanlder();
-        
-        private static Statement GetStatement(string query, object param)
+        private static Statement GetStatement(string query, object param, IStatementRunner runner)
         {
             query = query ?? throw new ArgumentNullException(nameof(query));
 
             if (param != null)
-                if (param is IDictionary<string, object>)
-                    return new Statement(query, ParamMangler.Mangle((IDictionary<string, object>)param));
-                else
-                    return new Statement(query, ParamMangler.Mangle(param.ToPropDictionary()));
+                return new Statement(query, runner.AsManaged().MangleParameters(param));
             else
                 return new Statement(query);
         }
 
         #endregion
 
+        #region asynchronizers
+        public static Task AsAsync(this IStatementRunner ext, Action<IStatementRunner> operation)
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            operation = operation ?? throw new ArgumentNullException(nameof(operation));
+
+            return Task.Run(() => operation(ext));
+        }
+        public static Task AsAsync(this IStatementRunner ext, Action<IStatementRunner> operation, CancellationToken cancellationToken)
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            operation = operation ?? throw new ArgumentNullException(nameof(operation));
+
+            return Task.Run(() => operation(ext), cancellationToken);
+        }
+        public static Task<T> AsAsync<T>(this IStatementRunner ext, Func<IStatementRunner, T> operation)
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            operation = operation ?? throw new ArgumentNullException(nameof(operation));
+
+            return Task.Run<T>(() => operation(ext));
+        }
+        public static Task<T> AsAsync<T>(this IStatementRunner ext, Func<IStatementRunner, T> operation, CancellationToken cancellationToken)
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            operation = operation ?? throw new ArgumentNullException(nameof(operation));
+
+            return Task.Run<T>(() => operation(ext), cancellationToken);
+        }
+        #endregion
+
         public static IResultSummary Execute(this IStatementRunner ext, string query, object param = null)
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
-            return ext.Run(GetStatement(query, param))?.Summary;
+            return ext.Run(GetStatement(query, param, ext))?.Summary;
         }
         public static IEnumerable<IResultSummary> Execute(this IStatementRunner ext, string query, params object[] param)
         {
@@ -66,10 +92,10 @@ namespace N4pper
 
                 return new QueryableNeo4jStatement<T>(
                 ext,
-                () => GetStatement(query, param), 
+                () => GetStatement(query, param, ext), 
                 (result, t) => 
                 {
-                    return RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t);
+                    return ext.AsManaged().ParseRecord(result.Values[result.Keys[0]], typeof(T), t);
                 });
         }
         public static IEnumerable<IEnumerable<T>> ExecuteQuery<T>(this IStatementRunner ext, string query, params object[] param)
@@ -101,12 +127,12 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                ()=>GetStatement(query, param),
+                ()=>GetStatement(query, param, ext),
                 (result, t) =>
                 {
                     return map(
-                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]],  typeof(T), t),
-                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1))
+                        (T)ext.AsManaged().ParseRecord(result.Values[result.Keys[0]],  typeof(T), t),
+                        (T1)ext.AsManaged().ParseRecord(result.Values[result.Keys[1]], typeof(T1), typeof(T1))
                         );
                 });
         }
@@ -140,13 +166,13 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                () => GetStatement(query, param),
+                () => GetStatement(query, param, ext),
                 (result, t) =>
                 {
                     return map(
-                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t),
-                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
-                        (T2)RecordHandler.ParseRecordValue(result.Values[result.Keys[2]], typeof(T2), typeof(T2))
+                        (T)ext.AsManaged().ParseRecord(result.Values[result.Keys[0]], typeof(T), t),
+                        (T1)ext.AsManaged().ParseRecord(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
+                        (T2)ext.AsManaged().ParseRecord(result.Values[result.Keys[2]], typeof(T2), typeof(T2))
                         );
                 });
         }
@@ -184,14 +210,14 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                () => GetStatement(query, param),
+                () => GetStatement(query, param, ext),
                 (result, t) =>
                 {
                     return map(
-                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t),
-                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
-                        (T2)RecordHandler.ParseRecordValue(result.Values[result.Keys[2]], typeof(T2), typeof(T2)),
-                        (T3)RecordHandler.ParseRecordValue(result.Values[result.Keys[3]], typeof(T3), typeof(T3))
+                        (T)ext.AsManaged().ParseRecord(result.Values[result.Keys[0]], typeof(T), t),
+                        (T1)ext.AsManaged().ParseRecord(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
+                        (T2)ext.AsManaged().ParseRecord(result.Values[result.Keys[2]], typeof(T2), typeof(T2)),
+                        (T3)ext.AsManaged().ParseRecord(result.Values[result.Keys[3]], typeof(T3), typeof(T3))
                         );
                 });
         }
@@ -233,15 +259,15 @@ namespace N4pper
 
             return new QueryableNeo4jStatement<T>(
                 ext,
-                () => GetStatement(query, param),
+                () => GetStatement(query, param, ext),
                 (result, t) =>
                 {
                     return map(
-                        (T)RecordHandler.ParseRecordValue(result.Values[result.Keys[0]], typeof(T), t),
-                        (T1)RecordHandler.ParseRecordValue(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
-                        (T2)RecordHandler.ParseRecordValue(result.Values[result.Keys[2]], typeof(T2), typeof(T2)),
-                        (T3)RecordHandler.ParseRecordValue(result.Values[result.Keys[3]], typeof(T3), typeof(T3)),
-                        (T4)RecordHandler.ParseRecordValue(result.Values[result.Keys[4]], typeof(T4), typeof(T4))
+                        (T)ext.AsManaged().ParseRecord(result.Values[result.Keys[0]], typeof(T), t),
+                        (T1)ext.AsManaged().ParseRecord(result.Values[result.Keys[1]], typeof(T1), typeof(T1)),
+                        (T2)ext.AsManaged().ParseRecord(result.Values[result.Keys[2]], typeof(T2), typeof(T2)),
+                        (T3)ext.AsManaged().ParseRecord(result.Values[result.Keys[3]], typeof(T3), typeof(T3)),
+                        (T4)ext.AsManaged().ParseRecord(result.Values[result.Keys[4]], typeof(T4), typeof(T4))
                         );
                 });
         }

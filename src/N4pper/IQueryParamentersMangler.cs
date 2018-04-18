@@ -6,6 +6,6 @@ namespace N4pper
 {
     public interface IQueryParamentersMangler
     {
-        IDictionary<string, object> Mangle(IDictionary<string, object> param);
+        IDictionary<string, object> Mangle(object param);
     }
 }
