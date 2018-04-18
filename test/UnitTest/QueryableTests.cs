@@ -54,6 +54,10 @@ namespace UnitTest
             Assert.Equal(2, ((List<IDictionary<string, object>>)result["lst"]).Count);
             Assert.Equal("x", ((List<IDictionary<string, object>>)result["lst"])[0]["Name"]);
             Assert.Equal("y", ((List<IDictionary<string, object>>)result["lst"])[1]["Name"]);
+
+            var user = parameterMangler.Mangle(new { user = new Dictionary<string, object>() { { "Name", "Luca" }, { "Age", 33 } } });
+            Assert.Equal("Luca", ((IDictionary<string, object>)user["user"])["Name"]);
+            Assert.Equal(33, ((IDictionary<string, object>)user["user"])["Age"]);
         }
 
         [Trait("Category", nameof(QueryableTests))]

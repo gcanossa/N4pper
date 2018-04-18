@@ -15,7 +15,7 @@ namespace N4pper
 
             if (param == null)
                 return result;
-
+            
             foreach (KeyValuePair<string, object> kv in (param is IDictionary<string, object> ? (IDictionary<string, object>)param : param.ToPropDictionary()))
             {
                 if (kv.Value == null)
@@ -29,7 +29,7 @@ namespace N4pper
                     result.Add(kv.Key, ((TimeSpan)kv.Value).TotalMilliseconds);
                 else if (kv.Value.IsPrimitive())
                     result.Add(kv.Key, kv.Value);
-                else if (kv.Value is IEnumerable)
+                else if (kv.Value is IEnumerable && kv.Value is IDictionary<string, object> == false)
                 {
                     List<IDictionary<string, object>> lst = new List<IDictionary<string, object>>();
                     foreach (object item in kv.Value as IEnumerable)
