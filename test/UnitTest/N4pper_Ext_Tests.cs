@@ -73,8 +73,7 @@ namespace UnitTest
             Assert.Equal(entity.TimeSpanNullable, entity2.TimeSpanNullable);
             Assert.Equal(entity.String, entity2.String);
         }
-
-
+        
         [TestPriority(0)]
         [Trait("Category", nameof(N4pper_Ext_Tests))]
         [Fact(DisplayName = nameof(GetDriver))]

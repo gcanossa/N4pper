@@ -1,5 +1,6 @@
 ﻿using OMnG;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -28,6 +29,15 @@ namespace N4pper
                     result.Add(kv.Key, ((TimeSpan)kv.Value).TotalMilliseconds);
                 else if (kv.Value.IsPrimitive())
                     result.Add(kv.Key, kv.Value);
+                else if (kv.Value is IEnumerable)
+                {
+                    List<IDictionary<string, object>> lst = new List<IDictionary<string, object>>();
+                    foreach (object item in kv.Value as IEnumerable)
+                    {
+                        lst.Add(MangleImpl(item));
+                    }
+                    result.Add(kv.Key, lst);
+                }
                 else
                     result.Add(kv.Key, MangleImpl(kv.Value));
             }

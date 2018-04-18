@@ -40,7 +40,22 @@ namespace UnitTest
         }
 
         #endregion
-        
+
+
+        [Trait("Category", nameof(QueryableTests))]
+        [Fact(DisplayName = nameof(ParamMangler))]
+        public void ParamMangler()
+        {
+            IQueryParamentersMangler parameterMangler = new DefaultParameterMangler();
+
+            var result = parameterMangler.Mangle(new { val=1,lst=new List<object>() { new { Name="x" }, new { Name = "y" } } });
+
+            Assert.Equal(1, result["val"]);
+            Assert.Equal(2, ((List<IDictionary<string, object>>)result["lst"]).Count);
+            Assert.Equal("x", ((List<IDictionary<string, object>>)result["lst"])[0]["Name"]);
+            Assert.Equal("y", ((List<IDictionary<string, object>>)result["lst"])[1]["Name"]);
+        }
+
         [Trait("Category", nameof(QueryableTests))]
         [Fact(DisplayName = nameof(PipeVariableRewriter_test))]
         public void PipeVariableRewriter_test()
