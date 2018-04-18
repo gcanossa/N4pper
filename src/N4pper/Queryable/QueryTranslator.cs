@@ -36,14 +36,15 @@ namespace N4pper.Queryable
             callChain.Reverse();
 
             MethodCallExpression last = callChain.FirstOrDefault(p => !IsManageable(p));
-            
+            MethodCallExpression select = callChain.LastOrDefault(p => p.Method.Name == nameof(q.Select));
+
             if (last != null)
             {
                 return ObjectExtensions.GetElementType(last.Arguments[0].Type);
             }
             else
             {
-                return ObjectExtensions.GetElementType(expression.Type);
+                return ObjectExtensions.GetElementType(select?.Type??expression.Type);
             }
         }
 
