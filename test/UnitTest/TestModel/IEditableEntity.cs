@@ -1,11 +1,10 @@
-﻿using N4pper.Ogm.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace UnitTest.TestModel
 {
-    public interface IEditableEntity : IOgmEntity
+    public interface IEditableEntity
     {
         int Index { get; set; }
         User Owner { get; set; }

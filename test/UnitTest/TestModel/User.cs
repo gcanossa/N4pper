@@ -1,11 +1,10 @@
-﻿using N4pper.Ogm.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace UnitTest.TestModel
 {
-    public class User : IOgmEntity
+    public class User
     {
         public virtual long? EntityId { get; set; }
         public virtual string Id { get; set; }

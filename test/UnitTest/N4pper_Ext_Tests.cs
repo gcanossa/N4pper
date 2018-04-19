@@ -1,6 +1,5 @@
 ﻿using AsIKnow.XUnitExtensions;
 using N4pper;
-using N4pper.Ogm;
 using N4pper.QueryUtils;
 using Neo4j.Driver.V1;
 using OMnG;
@@ -81,7 +80,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(GetDriver))]
         public void GetDriver()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
 
             var x = provider.GetDriver();
             Assert.NotNull(x);
@@ -93,7 +92,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(CRUD_Node))]
         public void CRUD_Node()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -139,7 +138,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(CRUD_Rel))]
         public void CRUD_Rel()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -179,7 +178,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(CRUD_Multi))]
         public void CRUD_Multi()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
 
             using (ISession session = provider.GetDriver().Session())
             {
@@ -220,7 +219,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(ReadAsQueryable))]
         public void ReadAsQueryable()
         {
-            DriverProvider provider = Fixture.GetService<DriverProvider<GlobalTestContext>>();
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
 
             using (ISession session = provider.GetDriver().Session())
             {

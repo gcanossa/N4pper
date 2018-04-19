@@ -51,9 +51,9 @@ namespace UnitTest
             var result = parameterMangler.Mangle(new { val=1,lst=new List<object>() { new { Name="x" }, new { Name = "y" } } });
 
             Assert.Equal(1, result["val"]);
-            Assert.Equal(2, ((List<IDictionary<string, object>>)result["lst"]).Count);
-            Assert.Equal("x", ((List<IDictionary<string, object>>)result["lst"])[0]["Name"]);
-            Assert.Equal("y", ((List<IDictionary<string, object>>)result["lst"])[1]["Name"]);
+            Assert.Equal(2, ((List<object>)result["lst"]).Count);
+            Assert.Equal("x", ((IDictionary<string, object>)((List<object>)result["lst"])[0])["Name"]);
+            Assert.Equal("y", ((IDictionary<string, object>)((List<object>)result["lst"])[1])["Name"]);
 
             var user = parameterMangler.Mangle(new { user = new Dictionary<string, object>() { { "Name", "Luca" }, { "Age", 33 } } });
             Assert.Equal("Luca", ((IDictionary<string, object>)user["user"])["Name"]);
