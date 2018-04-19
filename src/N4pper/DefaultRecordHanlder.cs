@@ -91,7 +91,7 @@ namespace N4pper
                 obj = new string[] { ((IRelationship)entity).Type }.GetTypesFromLabels().GetInstanceOfMostSpecific();
             }
 
-            return obj.CopyProperties(entity.Properties.ToDictionary(p => p.Key, p => 
+            return obj.CopyProperties(((IDictionary<string, object>)entity.Properties.ToDictionary(p => p.Key, p => 
             {
                 object tmp = TryWrapList(obj, p);
 
@@ -99,7 +99,7 @@ namespace N4pper
                     return tmp;
                 else
                     return p.Value;
-            }));
+            })).SelectProperties(obj.GetType().GetProperties().Select(p=>p.Name)));
         }
     }
 }
