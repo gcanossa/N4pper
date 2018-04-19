@@ -45,6 +45,17 @@ namespace N4pper
                 }
                 return lst;
             }
+            else if (value is IEnumerable 
+                && value.GetType().GetInterface("IDictionary`2") == null 
+                && (!value.GetType().IsGenericType || value.GetType().GetGenericTypeDefinition() != typeof(IDictionary<,>)))
+            {
+                List<object> lst = new List<object>();
+                foreach (object item in value as IEnumerable)
+                {
+                    lst.Add(MangleObject(item));
+                }
+                return lst;
+            }
             else
                 return MangleObject(value);
         }

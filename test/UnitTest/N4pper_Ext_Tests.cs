@@ -229,6 +229,8 @@ namespace UnitTest
                 Assert.Equal("Lord of the rings", session.ExecuteQuery<Book>($"MATCH {new Node<Book>("p")} RETURN p").Select(p => p.Name).ToList().FirstOrDefault());
                 Assert.Equal("Lord of the rings", session.ExecuteQuery<Book>($"MATCH {new Node<Book>("p")} RETURN p").Select(p => p.Name).FirstOrDefault());
                 Assert.Equal("Lord of the rings", session.ExecuteQuery<Book>($"MATCH {new Node<Book>("p")} RETURN p").Select(p => new { p.Name }).FirstOrDefault()?.Name);
+
+                session.Execute("UNWIND $rows AS row CREATE (p) SET p+=row", new { rows = new List<object>() { new { X=0,Y=0 }, new { X=1,Y=1 } } });
             }
         }
     }

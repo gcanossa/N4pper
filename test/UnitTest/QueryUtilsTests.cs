@@ -6,6 +6,7 @@ using N4pper.QueryUtils;
 using OMnG;
 using UnitTest.Types;
 using Castle.Components.DictionaryAdapter;
+using N4pper;
 
 namespace UnitTest
 {
@@ -126,6 +127,16 @@ namespace UnitTest
 
             Node x = new Node(type: typeof(TestDateTime));
             string y = x.ToString();
+        }
+
+
+        [Trait("Category", "QueryUtilsTests")]
+        [Fact(DisplayName = nameof(DeafultParamMangler))]
+        public void DeafultParamMangler()
+        {
+            DefaultParameterMangler obj = new DefaultParameterMangler();
+
+            var result = obj.Mangle(new { rows = new List<object>() { new { X = 0, Y = 0 }, new { X = 1, Y = 1 } } });
         }
     }
 }
