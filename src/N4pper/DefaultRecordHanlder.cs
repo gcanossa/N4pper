@@ -57,9 +57,9 @@ namespace N4pper
 
         private object TryWrapList(object obj, KeyValuePair<string, object> p)
         {
-            Type tp = obj.GetType().GetProperty(p.Key).PropertyType;
-            Type innerTp = tp.GetInterface("ICollection`1")?.GetGenericArguments()?.First();
-            if (innerTp == null && tp.IsGenericType && tp.GetGenericTypeDefinition() == typeof(ICollection<>))
+            Type tp = obj.GetType().GetProperty(p.Key)?.PropertyType;
+            Type innerTp = tp?.GetInterface("ICollection`1")?.GetGenericArguments()?.First();
+            if (tp != null && innerTp == null && tp.IsGenericType && tp.GetGenericTypeDefinition() == typeof(ICollection<>))
                 innerTp = tp.GetGenericArguments()?.First();
 
             if (innerTp != null
