@@ -34,6 +34,8 @@ namespace N4pper
                 return ((TimeSpan)value).TotalMilliseconds;
             else if (value.IsPrimitive())
                 return value;
+            else if (value is Guid)
+                return value.ToString();
             else if (value.GetType().IsEnum)
                 return (int)value;
             else if (GetICollectionT(value.GetType()) !=null)

@@ -48,12 +48,13 @@ namespace UnitTest
         {
             IQueryParamentersMangler parameterMangler = new DefaultParameterMangler();
 
-            var result = parameterMangler.Mangle(new { val=1,lst=new List<object>() { new { Name="x" }, new { Name = "y" } } });
+            var result = parameterMangler.Mangle(new { val=1,lst=new List<object>() { new { Name="x" }, new { Name = "y" },new { Name = Guid.NewGuid() } } });
 
             Assert.Equal(1, result["val"]);
-            Assert.Equal(2, ((List<object>)result["lst"]).Count);
+            Assert.Equal(3, ((List<object>)result["lst"]).Count);
             Assert.Equal("x", ((IDictionary<string, object>)((List<object>)result["lst"])[0])["Name"]);
             Assert.Equal("y", ((IDictionary<string, object>)((List<object>)result["lst"])[1])["Name"]);
+            Assert.IsType<string>(((IDictionary<string, object>)((List<object>)result["lst"])[2])["Name"]);
 
             var user = parameterMangler.Mangle(new { user = new Dictionary<string, object>() { { "Name", "Luca" }, { "Age", 33 } } });
             Assert.Equal("Luca", ((IDictionary<string, object>)user["user"])["Name"]);
