@@ -30,6 +30,14 @@ namespace N4pper
                 {
                     return TimeSpan.FromMilliseconds((long)Convert.ChangeType(value, typeof(long)));
                 }
+                else if (property.PropertyType == typeof(Guid) && value is Guid)
+                {
+                    return value.ToString();
+                }
+                else if (property.PropertyType == typeof(Guid) && value is string)
+                {
+                    return Guid.Parse(value.ToString());
+                }
                 else if (value.GetType() != property.PropertyType)
                 {
                     string convName = $"{value.GetType().FullName}{property.PropertyType.FullName}";

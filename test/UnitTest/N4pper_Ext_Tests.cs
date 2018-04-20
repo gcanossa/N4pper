@@ -38,7 +38,8 @@ namespace UnitTest
             { nameof(ITestEntity.String), "String"},
             { nameof(ITestEntity.Object), new object()},
             { nameof(ITestEntity.EnumValue), TestEnum.B},
-            { nameof(ITestEntity.Values), new List<string>(){ "aaa","bbb","ccc" } }
+            { nameof(ITestEntity.Values), new List<string>(){ "aaa","bbb","ccc" } },
+            { nameof(ITestEntity.GuidValue), Guid.NewGuid() }
         };
 
         private void PrepareEntity(ITestEntity entity)

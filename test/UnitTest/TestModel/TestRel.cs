@@ -17,6 +17,7 @@ namespace UnitTest.TestModel
         public TimeSpan TimeSpan { get; set; }
         public TimeSpan? TimeSpanNullable { get; set; }
         public string String { get; set; }
+        public Guid GuidValue { get; set; }
 
         public object Object { get; set; }
         public int ReadonlyInt { get; }
