@@ -32,10 +32,10 @@ namespace N4pper
             }
             else if (value.IsTimeSpan())
                 return ((TimeSpan)value).TotalMilliseconds;
+            else if (value.GetType() == typeof(Guid) || value.GetType() == typeof(Guid?))
+                return value.ToString();
             else if (value.IsPrimitive())
                 return value;
-            else if (value is Guid)
-                return value.ToString();
             else if (value.GetType().IsEnum)
                 return (int)value;
             else if (GetICollectionT(value.GetType()) !=null)
