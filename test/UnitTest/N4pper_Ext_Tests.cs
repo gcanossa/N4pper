@@ -112,7 +112,7 @@ namespace UnitTest
 
                 val = session.ExecuteQuery<TestNode>($"CREATE " +
                     $"{new Node(s, tnode.GetType(), (IDictionary<string, object>)tnode.Scope(new N4pper.ObjectExtensionsConfiguration(), q=>q.ToPropDictionary()))}" +
-                    $" RETURN {s}").FirstOrDefault();
+                    $" SET {s} :testlabel RETURN {s}").FirstOrDefault();
                 Assert.NotNull(val);
 
                 Assert.Equal(tnode.Id, val.Id);
