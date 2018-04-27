@@ -14,10 +14,10 @@ namespace N4pper
         protected override object ParseValue(PropertyInfo property, object target, object value)
         {
             if (value == null)
-                return ObjectExtensions.GetDefault(property.PropertyType);
+                return property.PropertyType.GetDefault();
             else
             {
-                if (ObjectExtensions.IsDateTime(property.PropertyType) && ObjectExtensions.IsNumeric(value.GetType()))
+                if (property.PropertyType.IsDateTime() && value.GetType().IsNumeric())
                 {
                     DateTimeOffset d = DateTimeOffset.FromUnixTimeMilliseconds((long)Convert.ChangeType(value, typeof(long)));
 
@@ -26,7 +26,7 @@ namespace N4pper
                     else
                         return d.ToLocalTime().DateTime;
                 }
-                else if (ObjectExtensions.IsTimeSpan(property.PropertyType) && ObjectExtensions.IsNumeric(value.GetType()))
+                else if (property.PropertyType.IsTimeSpan() && value.GetType().IsNumeric())
                 {
                     return TimeSpan.FromMilliseconds((long)Convert.ChangeType(value, typeof(long)));
                 }

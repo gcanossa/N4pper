@@ -87,7 +87,7 @@ namespace N4pper
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
+            if (typeof(T).IsCollection() && !typeof(T).IsEnumerable())
                     throw new InvalidOperationException("To map collections use IEnumerable`1");
 
                 return new QueryableNeo4jStatement<T>(
@@ -120,9 +120,9 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
+            if (typeof(T).IsCollection() && !typeof(T).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
+            if (typeof(T1).IsCollection() && !typeof(T1).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -157,11 +157,11 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
+            if (typeof(T).IsCollection() && !typeof(T).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
+            if (typeof(T1).IsCollection() && !typeof(T1).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T2)) && !ObjectExtensions.IsEnumerable(typeof(T2)))
+            if (typeof(T2).IsCollection() && !typeof(T2).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -199,13 +199,13 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
+            if (typeof(T).IsCollection() && !typeof(T).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
+            if (typeof(T1).IsCollection() && !typeof(T1).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T2)) && !ObjectExtensions.IsEnumerable(typeof(T2)))
+            if (typeof(T2).IsCollection() && !typeof(T2).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T3)) && !ObjectExtensions.IsEnumerable(typeof(T3)))
+            if (typeof(T3).IsCollection() && !typeof(T3).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(
@@ -246,15 +246,15 @@ namespace N4pper
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
             map = map ?? throw new ArgumentNullException(nameof(map));
 
-            if (ObjectExtensions.IsCollection(typeof(T)) && !ObjectExtensions.IsEnumerable(typeof(T)))
+            if (typeof(T).IsCollection() && !typeof(T).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T1)) && !ObjectExtensions.IsEnumerable(typeof(T1)))
+            if (typeof(T1).IsCollection() && !typeof(T1).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T2)) && !ObjectExtensions.IsEnumerable(typeof(T2)))
+            if (typeof(T2).IsCollection() && !typeof(T2).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T3)) && !ObjectExtensions.IsEnumerable(typeof(T3)))
+            if (typeof(T3).IsCollection() && !typeof(T3).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
-            if (ObjectExtensions.IsCollection(typeof(T4)) && !ObjectExtensions.IsEnumerable(typeof(T4)))
+            if (typeof(T4).IsCollection() && !typeof(T4).IsEnumerable())
                 throw new InvalidOperationException("To map collections use IEnumerable`1");
 
             return new QueryableNeo4jStatement<T>(

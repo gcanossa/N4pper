@@ -60,6 +60,34 @@ namespace UnitTest
             Assert.Equal("Luca", ((IDictionary<string, object>)user["user"])["Name"]);
             Assert.Equal(33, ((IDictionary<string, object>)user["user"])["Age"]);
         }
+        [Trait("Category", nameof(QueryableTests))]
+        [Fact(DisplayName = nameof(ParamMangler2))]
+        public void ParamMangler2()
+        {
+            IQueryParamentersMangler parameterMangler = new DefaultParameterMangler();
+
+            var result = parameterMangler.Mangle(new
+            {
+                value = new
+                {
+                    DateTime = new DateTime(1234, 1, 2),
+                    DateTimeNullable = (DateTimeOffset?)null,
+                    GuidValue = Guid.NewGuid(),
+                    ValuesInt = new List<int>() { 1, 2, 3 },
+                    ValuesObject = new List<object>() { new object() }
+                }
+            });
+
+            IDictionary<string, object> value = result["value"] as IDictionary<string, object>;
+
+            Assert.Equal(((DateTimeOffset)new DateTime(1234, 1, 2)).ToUnixTimeMilliseconds(), value["DateTime"]);
+            Assert.Null(value["DateTimeNullable"]);
+            Assert.NotEqual(default(Guid), value["GuidValue"]);
+            Assert.Equal(new List<int>() { 1, 2, 3 }, value["ValuesInt"]);
+            Assert.True(value.ContainsKey("ValuesObject"));
+            Assert.True(value["ValuesObject"] is List<object>);
+            Assert.True(((List<object>)value["ValuesObject"])[0] is IDictionary<string, object>);
+        }
 
         [Trait("Category", nameof(QueryableTests))]
         [Fact(DisplayName = nameof(PipeVariableRewriter_test))]

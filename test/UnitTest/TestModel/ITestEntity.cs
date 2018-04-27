@@ -25,5 +25,7 @@ namespace UnitTest.TestModel
         TestEnum EnumValue { get; set; }
 
         ICollection<string> Values { get; set; }
+        ICollection<int> ValuesInt { get; set; }
+        ICollection<object> ValuesObject { get; set; }
     }
 }

@@ -40,11 +40,11 @@ namespace N4pper.Queryable
 
             if (last != null)
             {
-                return ObjectExtensions.GetElementType(last.Arguments[0].Type);
+                return last.Arguments[0].Type.GetGenericArgumentsOf(typeof(IEnumerable<>)).First()[0].Type;
             }
             else
             {
-                return ObjectExtensions.GetElementType(select?.Type??expression.Type);
+                return (select?.Type??expression.Type).GetGenericArgumentsOf(typeof(IEnumerable<>)).First()[0].Type;
             }
         }
 

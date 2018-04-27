@@ -37,7 +37,7 @@ namespace N4pper.Queryable.Translators
 
                     _builder.Append(" RETURN avg(");
 
-                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && ObjectExtensions.IsNumeric(((MemberExpression)lambda.Body).Type))
+                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && ((MemberExpression)lambda.Body).Type.IsNumeric())
                         Visit(lambda.Body);
                     else
                         throw new ArgumentException("Lambada must be a numeric memmeber accessor", nameof(m));
@@ -51,7 +51,7 @@ namespace N4pper.Queryable.Translators
 
                     _builder.Append(" RETURN sum(");
 
-                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && ObjectExtensions.IsNumeric(((MemberExpression)lambda.Body).Type))
+                    if (lambda.Body.NodeType == ExpressionType.MemberAccess && ((MemberExpression)lambda.Body).Type.IsNumeric())
                         Visit(lambda.Body);
                     else
                         throw new ArgumentException("Lambada must be a numeric memmeber accessor", nameof(m));

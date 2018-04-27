@@ -24,7 +24,7 @@ namespace N4pper.Queryable
         protected virtual Type QueryableType => typeof(QueryableNeo4jStatement<>);
         public virtual IQueryable CreateQuery(Expression expression)
         {
-            Type elementType = ObjectExtensions.GetElementType(expression.Type);
+            Type elementType = expression.Type.GetGenericArgumentsOf(typeof(IEnumerable<>)).First()[0].Type;
             try
             {
                 return (IQueryable)Activator.CreateInstance(QueryableType.MakeGenericType(elementType), new object[] { this, expression });

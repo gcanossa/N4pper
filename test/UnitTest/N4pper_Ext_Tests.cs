@@ -39,6 +39,8 @@ namespace UnitTest
             { nameof(ITestEntity.Object), new object()},
             { nameof(ITestEntity.EnumValue), TestEnum.B},
             { nameof(ITestEntity.Values), new List<string>(){ "aaa","bbb","ccc" } },
+            { nameof(ITestEntity.ValuesInt), new List<int>(){ 1,2,3 } },
+            { nameof(ITestEntity.ValuesObject), new List<object>(){ new object(), new object(), new object() } },
             { nameof(ITestEntity.GuidValue), Guid.NewGuid() }
         };
 
@@ -61,6 +63,10 @@ namespace UnitTest
             Assert.Equal(DefaultTestEntity[nameof(ITestEntity.TimeSpanNullable)], entity.TimeSpanNullable);
             Assert.Equal(DefaultTestEntity[nameof(ITestEntity.String)], entity.String);
             Assert.Equal(DefaultTestEntity[nameof(ITestEntity.Object)], entity.Object);
+            Assert.Equal(DefaultTestEntity[nameof(ITestEntity.EnumValue)], entity.EnumValue);
+            Assert.Equal(DefaultTestEntity[nameof(ITestEntity.Values)], entity.Values);
+            Assert.Equal(DefaultTestEntity[nameof(ITestEntity.ValuesInt)], entity.ValuesInt);
+            Assert.Equal(DefaultTestEntity[nameof(ITestEntity.GuidValue)], entity.GuidValue);
         }
         private void CheckEntityEquals(ITestEntity entity, ITestEntity entity2)
         {
@@ -111,6 +117,7 @@ namespace UnitTest
 
                 Assert.Equal(tnode.Id, val.Id);
                 CheckEntityEquals(tnode, val);
+                Assert.Null(val.ValuesObject);
 
                 val = session.ExecuteQuery<TestNode>($"MATCH {new Node(s, tnode.GetType(), new { Id = 1 }.ToPropDictionary())} SET {new Set(s, new { Double = 1.2 }.ToPropDictionary())} RETURN {s}")
                     .FirstOrDefault();
@@ -231,6 +238,38 @@ namespace UnitTest
                 Assert.Equal("Lord of the rings", session.ExecuteQuery<Book>($"MATCH {new Node<Book>("p")} RETURN p").Select(p => new { p.Name }).FirstOrDefault()?.Name);
 
                 session.Execute("UNWIND $rows AS row CREATE (p) SET p+=row", new { rows = new List<object>() { new { X=0,Y=0 }, new { X=1,Y=1 } } });
+            }
+        }
+
+        [TestPriority(20)]
+        [Trait("Category", nameof(N4pper_Ext_Tests))]
+        [Fact(DisplayName = nameof(ComplexParam))]
+        public void ComplexParam()
+        {
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
+
+            using (ISession session = provider.GetDriver().Session())
+            {
+                TestNode result = session.ExecuteQuery<TestNode>(p =>
+                {
+                    Symbol s = p.Symbol();
+                    return $"CREATE {p.Node<TestNode>(s)} SET {s}+=$value RETURN {s}";
+                },
+                new { value = new
+                {
+                    DateTime = new DateTime(1234,1,2),
+                    DateTimeNullable = (DateTimeOffset?)null,
+                    GuidValue = Guid.NewGuid(),
+                    ValuesInt = new List<int>() { 1,2,3 },
+                    ValuesObject = new List<object>() { new object() }
+                }.SelectMatchingTypesProperties(p => p.IsPrimitive() || p.IsOfGenericType(typeof(IEnumerable<>), t => t.Type.IsPrimitive()))
+                }).First();
+
+                Assert.Equal(new DateTime(1234, 1, 2), result.DateTime);
+                Assert.Null(result.DateTimeNullable);
+                Assert.NotEqual(default(Guid), result.GuidValue);
+                Assert.Equal(new List<int>() { 1, 2, 3 }, result.ValuesInt);
+                Assert.Null(result.ValuesObject);
             }
         }
     }

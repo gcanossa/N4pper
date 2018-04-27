@@ -27,7 +27,7 @@ namespace N4pper.QueryUtils
                     .Where(
                     p =>
                         Type == null ||
-                        ObjectExtensions.IsPrimitive(Type.GetProperty(p.Key)?.PropertyType ?? typeof(IList<object>)) &&
+                        (Type.GetProperty(p.Key)?.PropertyType ?? typeof(IList<object>)).IsPrimitive() &&
                         (Type.GetProperty(p.Key)?.CanRead ?? false) && (Type.GetProperty(p.Key)?.CanWrite ?? false))
                     .Select(p => $"{s}{p.Key}={HandleValue(p.Value)}"));
             }

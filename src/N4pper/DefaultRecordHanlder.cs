@@ -18,27 +18,24 @@ namespace N4pper
                 assigningType = assigningType ?? throw new ArgumentNullException(nameof(assigningType));
                 realType = realType ?? throw new ArgumentNullException(nameof(realType));
 
-                if (ObjectExtensions.IsCollection(assigningType))
-                {
-                    if (!ObjectExtensions.IsEnumerable(assigningType))
-                        throw new InvalidOperationException("To map collections use IEnumerable`1");
-                    
-                    return ParseRecordsValue((IList<object>)value, assigningType.GetGenericArguments()[0], realType.GetGenericArguments()[0]);
+                if (assigningType.IsEnumerable())
+                {                 
+                    return ParseRecordsValue((IList<object>)value, assigningType.GetGenericArgumentsOf(typeof(IEnumerable<>)).First()[0].Type, realType.GetGenericArgumentsOf(typeof(IEnumerable<>)).First()[0].Type);
                 }
                 else
                 {
                     if (value is IList<object>)
                         return ParseRecordsValue((IList<object>)value, assigningType, realType);
-                    if (value is IEntity && assigningType.IsAssignableFrom(realType))
+                    else if (value is IEntity && assigningType.IsAssignableFrom(realType))
                         return MapEntity(assigningType, (IEntity)value);
                     else
-                        return ObjectExtensions.GetInstanceOf(realType, GetPropDictionary(value));
+                        return realType.GetInstanceOf(GetPropDictionary(value));
                 }
             }
         }
         private IList ParseRecordsValue(IList<object> value, Type assigningType, Type realType)
         {
-            IList lst = ObjectExtensions.GetListOf(realType);
+            IList lst = (IList)typeof(List<>).MakeGenericType(realType).GetInstanceOf(null);
             foreach (object item in value.Select(p => ParseRecordValue(p, assigningType, realType)))
             {
                 lst.Add(item);
@@ -58,18 +55,17 @@ namespace N4pper
         private object TryWrapList(object obj, KeyValuePair<string, object> p)
         {
             Type tp = obj.GetType().GetProperty(p.Key)?.PropertyType;
-            Type innerTp = tp?.GetInterface("ICollection`1")?.GetGenericArguments()?.First();
-            if (tp != null && innerTp == null && tp.IsGenericType && tp.GetGenericTypeDefinition() == typeof(ICollection<>))
-                innerTp = tp.GetGenericArguments()?.First();
+            Type innerTp = tp?.GetGenericArgumentsOf(typeof(ICollection<>))?.FirstOrDefault()?.FirstOrDefault()?.Type;
 
             if (innerTp != null
-                && ObjectExtensions.IsPrimitive(innerTp))
+                && innerTp.IsPrimitive())
             {
-                object val = (IList)Activator.CreateInstance(tp.IsInterface || tp.IsAbstract ? typeof(List<>).MakeGenericType(innerTp) : tp);
+                Type listType = tp.IsInterface || tp.IsAbstract ? typeof(List<>).MakeGenericType(innerTp) : tp;
+                object val = (IList)Activator.CreateInstance(listType);
                 MethodInfo m = tp.GetMethod("Add");
                 foreach (object item in (IEnumerable)p.Value)
                 {
-                    m.Invoke(val, new[] { item });
+                    m.Invoke(val, new[] { item?.ConvertTo(listType.GetGenericArguments()[0]) });
                 }
                 return val;
             }

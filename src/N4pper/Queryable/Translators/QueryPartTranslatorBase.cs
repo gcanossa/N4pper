@@ -158,7 +158,7 @@ namespace N4pper.Queryable.Translators
                         break;
                     case TypeCode.DateTime:
                     case TypeCode.Object:
-                        if (ObjectExtensions.IsDateTime(c.Value.GetType()))
+                        if (c.Value.GetType().IsDateTime())
                         {
                             DateTimeOffset d = c.Value is DateTimeOffset ? (DateTimeOffset)c.Value : (DateTime)c.Value;
                             _builder.Append(d.ToUnixTimeMilliseconds());

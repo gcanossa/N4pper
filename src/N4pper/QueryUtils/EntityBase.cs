@@ -45,12 +45,12 @@ namespace N4pper.QueryUtils
                 return "null";
             else
             {
-                if (ObjectExtensions.IsDateTime(value.GetType()))
+                if (value.GetType().IsDateTime())
                 {
                     DateTimeOffset d = value is DateTimeOffset ? (DateTimeOffset)value : (DateTime)value;
                     return d.ToUnixTimeMilliseconds().ToString();
                 }
-                else if (ObjectExtensions.IsTimeSpan(value.GetType()))
+                else if (value.GetType().IsTimeSpan())
                 {
                     return ((TimeSpan)value).TotalMilliseconds.ToString();
                 }
@@ -58,7 +58,7 @@ namespace N4pper.QueryUtils
                     return $"'{value}'";
                 else if (value.GetType().IsEnum)
                     return $"{(int)value}";
-                else if (ObjectExtensions.IsPrimitive(value.GetType()))
+                else if (value.GetType().IsPrimitive())
                 {
                     NumberFormatInfo nfi = new NumberFormatInfo();
                     nfi.NumberDecimalSeparator = ".";
@@ -80,7 +80,7 @@ namespace N4pper.QueryUtils
                         p.Value == null ||
                         p.Value is Parameter ||
                         p.Value is Symbol ||
-                        ((ObjectExtensions.IsPrimitive(p.Value.GetType()) || p.Value.GetType().IsEnum) && (Type.GetProperty(p.Key)?.CanRead ?? true) && (Type.GetProperty(p.Key)?.CanWrite ?? true))
+                        ((p.Value.GetType().IsPrimitive() || p.Value.GetType().IsEnum) && (Type.GetProperty(p.Key)?.CanRead ?? true) && (Type.GetProperty(p.Key)?.CanWrite ?? true))
                         )
                     .Select(p => $"{p.Key}:{HandleValue(p.Value)}")) + "}";
             }

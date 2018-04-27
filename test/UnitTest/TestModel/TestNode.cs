@@ -24,5 +24,7 @@ namespace UnitTest.TestModel
         public int WriteonlyInt { private get; set; }
         public TestEnum EnumValue { get; set; }
         public ICollection<string> Values { get; set; }
+        public ICollection<int> ValuesInt { get; set; }
+        public ICollection<object> ValuesObject { get; set; }
     }
 }

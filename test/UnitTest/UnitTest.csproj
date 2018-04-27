@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AsIKnow.DependencyHelpers.Neo4j" Version="0.1.12" />
+    <PackageReference Include="AsIKnow.DependencyHelpers.Neo4j" Version="0.1.13" />
     <PackageReference Include="AsIKnow.XUnitExtensions" Version="0.1.2" />
     <PackageReference Include="Castle.Core" Version="4.2.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.0.0" />

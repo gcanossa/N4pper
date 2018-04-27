@@ -15,7 +15,7 @@ namespace N4pper.Queryable
     {
         internal static object Execute<TResult>(IStatementRunner runner, Statement statement, Func<IRecord, Type, object> mapper, Expression expression)
         {
-            bool IsEnumerable = ObjectExtensions.IsEnumerable(typeof(TResult));
+            bool IsEnumerable = typeof(TResult).IsEnumerable();
             Type typeResult;
 
             QueryTranslator tranaslator = new QueryTranslator();
@@ -46,7 +46,7 @@ namespace N4pper.Queryable
                     if (r == null)
                     {
                         if (terminal.Method.Name.EndsWith("Default"))
-                            return ObjectExtensions.GetDefault(typeResult);
+                            return typeResult.GetDefault();
                         else
                             throw new ArgumentOutOfRangeException(nameof(records), "The collection is empty");
                     }
@@ -58,7 +58,7 @@ namespace N4pper.Queryable
             }
             else
             {
-                System.Collections.IList lst = ObjectExtensions.GetListOf(typeResult);
+                System.Collections.IList lst = (System.Collections.IList)typeof(List<>).MakeGenericType(typeResult).GetInstanceOf(null);
                 foreach (object item in records.Select(p => mapper(p, typeResult)))
                 {
                     lst.Add(item);
