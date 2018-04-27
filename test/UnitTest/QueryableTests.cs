@@ -10,6 +10,7 @@ using Neo4j.Driver.V1;
 using OMnG;
 using System.Text.RegularExpressions;
 using N4pper.Queryable.CypherSintaxHelpers;
+using UnitTest.TestModel;
 
 namespace UnitTest
 {
@@ -141,7 +142,7 @@ namespace UnitTest
             Assert.Equal("WITH val as d match (p:Parent {Name:\"Luca\", Age:2}-[r:Of {Id:1}]->(:Son {Name:\"Carlo\"}) " +
                 $"WITH d,p,r WITH d,p,r,p WITH p,collect(r) AS {m[0]} WITH p,{m[0]},collect(r) AS {m[2]}", res);
         }
-
+        
         //[Trait("Category", nameof(QueryableTests))]
         //[Fact(DisplayName = nameof(Debug))]
         //public void Debug()

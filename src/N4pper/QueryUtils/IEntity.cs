@@ -8,7 +8,7 @@ namespace N4pper.QueryUtils
     {
         IDictionary<string, object> Props { get; }
 
-        Parameters Parametrize(string suffix = null);
+        Parameters Parametrize(string suffix = null, string prefix = null);
         IEntity Parametrize(Parameters p);
     }
 }

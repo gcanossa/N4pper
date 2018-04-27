@@ -167,6 +167,18 @@ namespace N4pper.Queryable.Translators
                         {
                             _builder.Append(((TimeSpan)c.Value).TotalMilliseconds);
                         }
+                        else if (c.Value.GetType() == typeof(Guid) || c.Value.GetType() == typeof(Guid?))
+                        {
+                            _builder.Append("'");
+
+                            _builder.Append(c.Value.ToString());
+
+                            _builder.Append("'");
+                        }
+                        else if(c.Value.GetType().IsEnum)
+                        {
+                            _builder.Append((int)c.Value);
+                        }
                         else if(typeof(IEnumerable).IsAssignableFrom(c.Value.GetType()))
                         {
                             _builder.Append("[");

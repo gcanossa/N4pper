@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <Version>0.1.19</Version>
+    <Version>0.1.20</Version>
     <Company>asiknow.it</Company>
     <PackageLicenseUrl>https://github.com/goldenass/N4pper/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/goldenass/N4pper/blob/master/LICENSE</PackageProjectUrl>
     <Description>Neo4j Dapper</Description>
     <PackageTags>neo4j dapper</PackageTags>
-    <AssemblyVersion>0.1.19.0</AssemblyVersion>
-    <FileVersion>0.1.19.0</FileVersion>
+    <AssemblyVersion>0.1.20.0</AssemblyVersion>
+    <FileVersion>0.1.20.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +17,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.0.0" />
     <PackageReference Include="Neo4j.Driver" Version="1.5.2" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
-    <PackageReference Include="OMnG" Version="0.2.2" />
+    <PackageReference Include="OMnG" Version="0.2.3" />
   </ItemGroup>
 
   <ItemGroup>

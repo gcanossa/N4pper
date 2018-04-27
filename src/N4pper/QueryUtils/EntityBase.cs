@@ -91,9 +91,9 @@ namespace N4pper.QueryUtils
             return Build();
         }
 
-        public Parameters Parametrize(string suffix = null)
+        public Parameters Parametrize(string suffix = null, string prefix = null)
         {
-            Parameters p = new Parameters(Props.Keys, suffix);
+            Parameters p = new Parameters(Props.Keys, suffix, prefix);
             p.Apply(this);
 
             return p;

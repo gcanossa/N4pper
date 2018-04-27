@@ -9,9 +9,9 @@ using q = System.Linq.Queryable;
 
 namespace N4pper.Queryable
 {
-    internal class QueryTranslator
+    public class QueryTranslator
     {
-        internal QueryTranslator()
+        public QueryTranslator()
         {
         }
 
@@ -215,7 +215,7 @@ namespace N4pper.Queryable
             }
             return null;
         }
-        internal string Translate(Expression expression, out MethodCallExpression terminalExpr, out int? countFromBegin, out Type typeResult, string paramNameOverride, IEnumerable<string> otherVariables)
+        public string Translate(Expression expression, out MethodCallExpression terminalExpr, out int? countFromBegin, out Type typeResult, string paramNameOverride, IEnumerable<string> otherVariables)
         {
             otherVariables = otherVariables ?? new string[0];
             typeResult = GetExpressionsTypeResult(expression);

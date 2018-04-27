@@ -10,12 +10,14 @@ namespace N4pper.QueryUtils
     {
         public IList<string> Mappings { get; protected set; }
         public string Suffix { get; protected set; }
-        public Parameters(IEnumerable<string> props, string suffix=null)
+        public string Prefix { get; protected set; }
+        public Parameters(IEnumerable<string> props, string suffix=null, string prefix = null)
         {
             props = props ?? throw new ArgumentNullException(nameof(props));
 
             Mappings = props.ToList();
             Suffix = suffix ?? "";
+            Prefix = prefix ?? "";
         }
 
         public void Apply(IEntity entity)
@@ -25,7 +27,7 @@ namespace N4pper.QueryUtils
                 if (entity.Props.ContainsKey(key) && (
                     entity.Props[key] == null || 
                     !entity.Props[key].IsDateTime() && entity.Props[key].GetType() != typeof(TimeSpan) && entity.Props[key].GetType() != typeof(TimeSpan?)))
-                    entity.Props[key] = new Parameter($"{key}{Suffix}");
+                    entity.Props[key] = new Parameter($"{Prefix}{key}{Suffix}");
             }
         }
 
@@ -38,7 +40,7 @@ namespace N4pper.QueryUtils
                 if (original.ContainsKey(key) && 
                     (original[key]==null || 
                     !original[key].IsDateTime() && original[key].GetType()!=typeof(TimeSpan) && original[key].GetType() != typeof(TimeSpan?)))
-                    values.Add($"{key}{Suffix}", original[key]);
+                    values.Add($"{Prefix}{key}{Suffix}", original[key]);
             }
 
             return values;

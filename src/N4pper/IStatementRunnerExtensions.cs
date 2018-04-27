@@ -12,6 +12,9 @@ using System.Reflection;
 using System.Collections;
 using qu = N4pper.QueryUtils;
 using System.Threading;
+using System.Linq.Expressions;
+using N4pper.QueryUtils;
+using N4pper.Entities;
 
 namespace N4pper
 {
@@ -59,6 +62,72 @@ namespace N4pper
             operation = operation ?? throw new ArgumentNullException(nameof(operation));
 
             return Task.Run<T>(() => operation(ext), cancellationToken);
+        }
+        #endregion
+
+        #region Entities CRUD
+        public static T AddOrUpdateNode<T>(this IStatementRunner ext, T entity, Expression<Func<T, object>> propMatch = null) where T : class
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            entity = entity ?? throw new ArgumentNullException(nameof(entity));
+            IEnumerable<string> keyOn = propMatch?.ToPropertyNameCollection() ?? new string[0];
+
+            if(keyOn.Count()>0)
+            {
+                foreach (string name in keyOn)
+                {
+                    PropertyInfo pinfo = typeof(T).GetProperty(name);
+                    if (ObjectExtensions.Configuration.Get(pinfo, entity) == pinfo.PropertyType.GetDefault())
+                        throw new ArgumentException($"Every selection matching property must be set. '{name}' has its default type value.");
+                }
+            }
+
+            Symbol s = new Symbol();
+            Node n = new Node(s, typeof(T), entity.SelectProperties(keyOn));
+            n.Parametrize(prefix:"value.");
+
+            return ext.ExecuteQuery<T>(
+                $"MERGE {n} " +
+                $"ON CREATE SET {s}+=$value,{s}.{nameof(IOgmEntity.EntityId)}=id({s}) " +
+                $"ON MATCH SET {s}+=$value,{s}.{nameof(IOgmEntity.EntityId)}=id({s}) " +
+                $"RETURN {s}",
+                new { value = entity.SelectMatchingTypesProperties(p => p.IsPrimitive() || p.IsOfGenericType(typeof(IEnumerable<>), t => t.Type.IsPrimitive())) }).FirstOrDefault();
+        }
+        public static IResultSummary DeleteNode<T>(this IStatementRunner ext, T entity, Expression<Func<T, object>> propMatch = null) where T : class
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            entity = entity ?? throw new ArgumentNullException(nameof(entity));
+            IEnumerable<string> keyOn = propMatch?.ToPropertyNameCollection() ?? entity.GetType().GetProperties().Select(p=>p.Name);
+
+            if (keyOn.Count() > 0)
+            {
+                foreach (string name in keyOn)
+                {
+                    PropertyInfo pinfo = typeof(T).GetProperty(name);
+                    if (ObjectExtensions.Configuration.Get(pinfo, entity) == pinfo.PropertyType.GetDefault())
+                        throw new ArgumentException($"Every selection matching property must be set. '{name}' has its default type value.");
+                }
+            }
+
+            Symbol s = new Symbol();
+            Node n = new Node(s, typeof(T), entity.SelectProperties(keyOn));
+            n.Parametrize(prefix: "value.");
+
+            return ext.Execute(
+                $"MATCH {n.BuildForQuery()} " + 
+                $"DETACH DELETE {s}",
+                new { value = entity });
+        }
+        public static IQueryable<T> GetQueryableNodeSet<T>(this IStatementRunner ext) where T : class
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+
+            Symbol s = new Symbol();
+            Node n = new Node(s, typeof(T));
+
+            return ext.ExecuteQuery<T>(
+                $"MATCH {n.BuildForQuery()} " +
+                $"RETURN {s}");
         }
         #endregion
 

@@ -272,5 +272,65 @@ namespace UnitTest
                 Assert.Null(result.ValuesObject);
             }
         }
+
+        [TestPriority(20)]
+        [Trait("Category", nameof(N4pper_Ext_Tests))]
+        [Fact(DisplayName = nameof(EntityHelpers))]
+        public void EntityHelpers()
+        {
+            DriverProvider provider = Fixture.GetService<TestDriverProvider>();
+
+            Guid id = Guid.NewGuid();
+
+            using (ISession session = provider.GetDriver().Session())
+            {
+                TestNode result = session.AddOrUpdateNode<TestNode>(new TestNode()
+                {
+                    DateTime = new DateTime(1234, 1, 2),
+                    DateTimeNullable = (DateTime?)null,
+                    GuidValue = id,
+                    ValuesInt = new List<int>() { 1, 2, 3 },
+                    ValuesObject = new List<object>() { new object() }
+                }, p=>p.GuidValue);
+
+                Assert.NotNull(result);
+                Assert.Equal(new DateTime(1234, 1, 2), result.DateTime);
+                Assert.Null(result.DateTimeNullable);
+                Assert.NotEqual(default(Guid), result.GuidValue);
+                Assert.Equal(new List<int>() { 1, 2, 3 }, result.ValuesInt);
+                Assert.Null(result.ValuesObject);
+                
+                result = session.GetQueryableNodeSet<TestNode>().FirstOrDefault(p=>p.GuidValue == id);
+                Assert.NotNull(result);
+                Assert.Equal(new DateTime(1234, 1, 2), result.DateTime);
+                Assert.Null(result.DateTimeNullable);
+                Assert.NotEqual(default(Guid), result.GuidValue);
+                Assert.Equal(new List<int>() { 1, 2, 3 }, result.ValuesInt);
+                Assert.Null(result.ValuesObject);
+
+                result.DateTime = new DateTime(2345, 2, 3);
+                result = session.AddOrUpdateNode<TestNode>(result, p => p.GuidValue);
+                Assert.NotNull(result);
+                Assert.Equal(new DateTime(2345, 2, 3), result.DateTime);
+                Assert.Null(result.DateTimeNullable);
+                Assert.NotEqual(default(Guid), result.GuidValue);
+                Assert.Equal(new List<int>() { 1, 2, 3 }, result.ValuesInt);
+                Assert.Null(result.ValuesObject);
+
+                result = session.GetQueryableNodeSet<TestNode>().FirstOrDefault(p => p.GuidValue == id);
+                Assert.NotNull(result);
+                Assert.Equal(new DateTime(2345, 2, 3), result.DateTime);
+                Assert.Null(result.DateTimeNullable);
+                Assert.NotEqual(default(Guid), result.GuidValue);
+                Assert.Equal(new List<int>() { 1, 2, 3 }, result.ValuesInt);
+                Assert.Null(result.ValuesObject);
+
+                var res = session.DeleteNode<TestNode>(result, p => p.GuidValue);
+                Assert.Equal(1, res.Counters.NodesDeleted);
+
+                result = session.GetQueryableNodeSet<TestNode>().FirstOrDefault(p => p.GuidValue == id);
+                Assert.Null(result);
+            }
+        }
     }
 }

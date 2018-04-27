@@ -95,7 +95,7 @@ namespace N4pper
                     return tmp;
                 else
                     return p.Value;
-            })).SelectProperties(obj.GetType().GetProperties().Select(p=>p.Name)));
+            })).SelectProperties(obj.GetType().GetProperties().Where(p=>p.CanWrite).Select(p=>p.Name)));
         }
     }
 }
